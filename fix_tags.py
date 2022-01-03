@@ -5,7 +5,7 @@ import urwid
 from tabulate import tabulate
 from termcolor import colored
 
-from fix_utils import extract_data_for_fix_version
+from fix_utils import extract_tag_dict_for_fix_version
 
 DEFAULT_VERSION = "4.2"
 
@@ -13,19 +13,17 @@ DEFAULT_VERSION = "4.2"
 def get_data_grid_for_search(search=None):
     rows = []
     for id in sorted(tag_dict_by_id, key=lambda k: int(k)):
-        record = tag_dict_by_id[id]
-        name = record['name']
-        type = record['type']
-        desc = record['desc']
+        fix_tag = tag_dict_by_id[id]
+        desc = fix_tag.desc
         if len(desc) > 80:
             desc = desc[:79] + '…'
-        value_rows = "\n".join([f"{v['value']}: {v['name']}" for v in record['values'].values()])
+        value_rows = "\n".join([f"{v.value}: {v.name}" for v in fix_tag.values.values()])
         if search:
-            include = search.lower() in (id + name + desc + value_rows).lower()
+            include = search.lower() in (id + fix_tag.name + fix_tag.desc + value_rows).lower()
         else:
             include = True
         if include:
-            row = [id, name, type, desc, value_rows]
+            row = [id, fix_tag.name, fix_tag.type, desc, value_rows]
             rows.append(row)
 
     return tabulate(rows, headers=["ID", "NAME", "TYPE", "DESCRIPTION", "VALUES"], tablefmt='grid')
@@ -68,7 +66,7 @@ def color_search_string(text, search_string, color):
 
 
 if __name__ == '__main__':
-    tag_dict_by_id = extract_data_for_fix_version(DEFAULT_VERSION)
+    tag_dict_by_id = extract_tag_dict_for_fix_version(DEFAULT_VERSION)
     if len(sys.argv) > 1:
         search = sys.argv[1]
         search_results = get_data_grid_for_search(search)

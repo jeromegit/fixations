@@ -2,8 +2,26 @@ import json
 import os.path
 import pathlib
 import re
+from dataclasses import dataclass, field
+from typing import Dict
 from xml.dom.minidom import parse
 
+DEFAULT_FIX_VERSION = '4.2'
+FIX_TAG_ID_SENDING_TIME = '52'
+
+@dataclass
+class FixTagValue:
+    value: str
+    name: str
+    desc: str
+
+@dataclass
+class FixTag:
+    id: str
+    name: str
+    type: str
+    desc: str
+    values: Dict[str, FixTagValue] = field(default_factory=dict)
 
 def get_xml_text(nodelist):
     rc = []
@@ -60,7 +78,7 @@ def extract_elements_from_file_by_tag_name(fix_version, file, tag_name):
     return elements
 
 
-def extract_data_for_fix_version(fix_version):
+def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
     versions = get_list_of_available_fix_versions()
     assert fix_version in versions, f"The specified FIX version:{fix_version} is not valid. Use one of these {versions}"
 
@@ -69,13 +87,17 @@ def extract_data_for_fix_version(fix_version):
     tag_dict_by_id = {}
     for field in fields:
         id, name, type, desc = extract_tag_data_from_xml_field(field)
-        tag_dict_by_id[id] = {'id': id, 'name': name, 'type': type, 'desc': desc, 'values': {}}
+#        tag_dict_by_id[id] = {'id': id, 'name': name, 'type': type, 'desc': desc, 'values': {}}
+        tag_dict_by_id[id] = FixTag(id, name, type, desc, {})
+
 
     # Extract all FIX tag values from Enums XML file and attach them to the tag dictionary
     enums = extract_elements_from_file_by_tag_name(fix_version, "Enums.xml", "Enum")
     for enum in enums:
         id, name, value, desc = extract_tag_data_from_xml_enum(enum)
-        tag_dict_by_id[id]['values'][value] = {'value': value, 'name': name, 'desc': desc}
+#        tag_dict_by_id[id]['values'][value] = {'value': value, 'name': name, 'desc': desc}
+        fix_tag_value = FixTagValue(value, name, desc)
+        tag_dict_by_id[id].values[value] = fix_tag_value
 
     return tag_dict_by_id
 
