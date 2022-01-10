@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import re
 import sys
 
@@ -59,7 +61,7 @@ for fix_tags in tag_lines:
     time = fix_tags[FIX_TAG_ID_SENDING_TIME]
     headers.append(time)
 
-print(tabulate(rows, headers=headers, tablefmt='pretty'))
+print(tabulate(rows, headers=headers, stralign='left', tablefmt='psql'))
 
 
 
