@@ -14,6 +14,8 @@ from dataclasses_json import dataclass_json
 
 DEFAULT_FIX_VERSION = "4.2"
 FIX_TAG_ID_SENDING_TIME = "52"
+FIX_TAG_ID_SENDER_COMP_ID = "49"
+FIX_TAG_ID_TARGET_COMP_ID = "56"
 
 DEFAULT_CFG_FILE_PATH = os.environ["HOME"] + "/.fixations.ini"
 DEFAULT_DATA_DIR_PATH = os.environ["HOME"] + "/.fixations"
@@ -167,7 +169,12 @@ def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
         id, name, value, desc = extract_tag_data_from_xml_enum(enum)
         #        tag_dict_by_id[id]['values'][value] = {'value': value, 'name': name, 'desc': desc}
         fix_tag_value = FixTagValue(value, name, desc)
-        tag_dict_by_id[id].values[value] = fix_tag_value
+        if id in tag_dict_by_id:
+            tag_dict_by_id[id].values[value] = fix_tag_value
+        else:
+            # Somehow the quality of the data is not that great and some enum values reference tags that don't exist
+#            print(f"ERROR: id:{id} for name:{name}, value:{value}, desc:{desc} doesn't exist")
+            pass
 
     return tag_dict_by_id
 
