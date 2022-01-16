@@ -7,7 +7,7 @@ import urwid
 from tabulate import tabulate
 from termcolor import colored
 
-from fix_utils import extract_tag_dict_for_fix_version
+from fixations.fix_utils import extract_tag_dict_for_fix_version
 
 DEFAULT_VERSION = "4.2"
 

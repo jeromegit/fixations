@@ -5,7 +5,7 @@ import sys
 
 from tabulate import tabulate
 
-from fix_utils import extract_tag_dict_for_fix_version, FIX_TAG_ID_SENDING_TIME
+from fixations.fix_utils import extract_tag_dict_for_fix_version, FIX_TAG_ID_SENDING_TIME
 
 fix_tag_dict = extract_tag_dict_for_fix_version()
 
