@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "fixations"
+version = "0.1.1"
+description = "This is a set of tools to handle FIX protocol data"
+authors = ["Jerome Provensal <jeromegit@provensal.com>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+keywords = ["fix", "fix-protol"]
+homepage = "https://github.com/jeromegit/fixations"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+urwid = "^2.1"
+termcolor = "1.1.*"
+dataclasses-json = "0.5.6"
+tabulate = "0.8.9"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
