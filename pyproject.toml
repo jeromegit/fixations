@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fixations"
-version = "0.1.4"
+version = "0.1.7"
 description = "This is a set of tools to handle FIX protocol data"
 authors = ["Jerome Provensal <jeromegit@provensal.com>"]
 license = "GPL-3.0-or-later"
