@@ -1,11 +1,11 @@
-Session Level
+SESSION LEVEL
    * 8:  BeginString
    * 34: MsgSeqNum
    * 9:  BodyLength
    * 10: CheckSum
    * 52: SendingTime
 
-Business Level
+BUSINESS LEVEL
    * 1:   Account
    * 6:   AvgPx (Average Price)
    * 11:  ClOrdID (Client Order ID)
@@ -33,13 +33,13 @@ Business Level
           * 8: Exchange Symbol
    * 31:  LastPx (Price for this last fill)
    * 32:  LastShares (Qty filled in this last fill)
-   * 35:  MsgType (Action)
-          * 0: Heartbeat  <> 
-          * 1: Test Request <> (triggers HB from other side)
+   * 35:  MsgType (Action) >:to broker <:from broker
+          * 0: Heartbeat  < > 
+          * 1: Test Request < > (triggers HB from other side)
           * 2: Resend Request < (seq# gap detected)
-          * 4: Sequence Reset (send app to reset seq#)
-          * 5: Logout
-          * 6: Indication of Interest (submit IOI)
+          * 4: Sequence Reset < > (send app to reset seq#)
+          * 5: Logout >
+          * 6: Indication of Interest > (submit IOI)
           * 8: Execution Report < (order/action reception and status)
           * 9: Order Cancel Reject < (reject of cancel/replace request)
           * A: Logon > (first message)
@@ -56,7 +56,7 @@ Business Level
           * 3: Done for day
           * 4: Canceled
           * 5: Replaced
-          * 6: Pending Cancel (e.g. result of Order Cancel Request <F>)
+          * 6: Pending Cancel (e.g. result of Order Cancel Request)
           * 8: Rejected
           * 9: Suspended
    * 40:  OrderType
