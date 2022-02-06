@@ -61,7 +61,6 @@ BUSINESS LEVEL
           * 9: Suspended
    * 40:  OrderType
           * 1: Market
-          * 2: Limit
           * 3: Stop
           * 4: Stop limit
           * P: Pegged
@@ -87,6 +86,9 @@ BUSINESS LEVEL
           * 4: Fill or Kill (FOK)
           * 6: Good Till Date
    * 60:  TransacTime (time of order creation / execution
+   * 65:  SymbolSfx (suffix or add'l info about security, e.g. warrants, preferred, etc...)
+   * 76:  ExecBroker (ID of exec / give-up broker. NASD market-maker mnemonic) 
+   * 100: ExDestination (Execution destination as defined by creator of order)
    * 102: CxlRejReason
           * 0: Too late to cancel
           * 1: Unknown order
@@ -94,6 +96,7 @@ BUSINESS LEVEL
    * 103: OrdRejReason
           * 0: Broker/Exchange Option
    * 110: MinQty
+   * 115: OnBehalfOfCompID (originating firm ID)
    * 150: ExecType
           * 0: New
           * 1: Partial fill
@@ -101,7 +104,17 @@ BUSINESS LEVEL
           * 3: Done for day
           * 4: Canceled
           * 5: Replaced
-          * 6: Pending Cancel (e.g. result of Order Cancel Request <F>)
+          * 6: Pending Cancel (e.g. result of Order Cancel Request)
           * 8: Rejected
           * C: Expired
    * 151: LeavesQty (qty remaining open)
+   * 8002 ToProxyOrGate (POSITAlert custom tags)
+          * 0: To Proxy (conditional order)
+          * 1: To GATE (firm order)
+   * 8003 Interaction Type (POSITAlert custom tags)
+          * 0: interact with all
+          * 1: interact with electronic only
+   * 8005 InviteAndOpportunity (POSITAlert custom tags)
+          * 1: Opportunity
+          * 2: Opportunity Gone
+          * 5: Invite
