@@ -1,11 +1,11 @@
-SESSION LEVEL
+--- SESSION LEVEL---
    * 8:  BeginString
    * 34: MsgSeqNum
    * 9:  BodyLength
    * 10: CheckSum
    * 52: SendingTime
 
-BUSINESS LEVEL
+--- BUSINESS LEVEL ---
    * 1:   Account
    * 6:   AvgPx (Average Price)
    * 11:  ClOrdID (Client Order ID)
