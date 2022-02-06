@@ -22,6 +22,10 @@ BUSINESS LEVEL
           * 1: Cancel
           * 2: Correct
           * 3: Status
+   * 21:  HandlInst (Instructions for order handling on Broker)
+          * 1: Automated execution order, private, no Broker intervention
+          * 2: Automated execution order, public, Broker intervention OK
+          * 3: Manual order, best execution          
    * 22:  IDSource (ID for class of alternative used in tag48)
           * 1: CUSIP
           * 2: SEDOL
@@ -31,6 +35,8 @@ BUSINESS LEVEL
           * 6: ISO Currency <15> Code
           * 7: ISO Country <421> Code
           * 8: Exchange Symbol
+   * 23:  IOIid (ID of IOI when 35=6)
+   * 30:  LastMkt (Market of execution for last fill)
    * 31:  LastPx (Price for this last fill)
    * 32:  LastShares (Qty filled in this last fill)
    * 35:  MsgType (Action) >:to broker <:from broker
