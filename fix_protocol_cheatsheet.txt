@@ -18,7 +18,7 @@
           * P: Market peg
           * R: Primary peg (primary market - buy at bid/sell at offer)
    * 20:  ExecTransType
-          * 0: New
+          * 0: New/Ack
           * 1: Cancel
           * 2: Correct
           * 3: Status
@@ -56,7 +56,7 @@
    * 37   OrderID (Unique ID maintained by broker)
    * 38:  OrderQty
    * 39:  OrderStatus
-          * 0: New
+          * 0: New/ACK
           * 1: Partially filled
           * 2: Filled
           * 3: Done for day
@@ -77,7 +77,7 @@
           * P: Principal
           * R: Transactions for the acct of a non-member competing market-maker
           * Y: Program Order, non-index arb, for other agency
-   * 48:  SecurityID (CUSIP/DESOL or other alternate securty ID. See tag22)
+   * 48:  SecurityID (CUSIP/SEDOL or other alternate securty ID. See tag22)
    * 49:  SenderCompID (ID for sending firm)
    * 50:  SenderSubID (ID for sending sub-entity)
    * 54:  Side
@@ -91,7 +91,7 @@
           * 3: Immediate or Cancel (IOC)
           * 4: Fill or Kill (FOK)
           * 6: Good Till Date
-   * 60:  TransacTime (time of order creation / execution
+   * 60:  TransacTime (time of order creation / execution)
    * 65:  SymbolSfx (suffix or add'l info about security, e.g. warrants, preferred, etc...)
    * 76:  ExecBroker (ID of exec / give-up broker. NASD market-maker mnemonic) 
    * 100: ExDestination (Execution destination as defined by creator of order)
@@ -104,7 +104,7 @@
    * 110: MinQty
    * 115: OnBehalfOfCompID (originating firm ID)
    * 150: ExecType
-          * 0: New
+          * 0: New/ACK
           * 1: Partial fill
           * 2: Fill
           * 3: Done for day
