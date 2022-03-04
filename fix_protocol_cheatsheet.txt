@@ -50,7 +50,8 @@
           * 9: Order Cancel Reject < (reject of cancel/replace request)
           * A: Logon > (first message)
           * C: Email > (free format msg)
-          * D: Order - Single > (submit order) 
+          * D: Order - Single > (submit order)
+          * E: Order - List > (submit order)
           * F: Order Cancel Request > (cancel order)
           * G: Order Cancel/Replace Request > (modify order)
    * 37   OrderID (Unique ID maintained by broker)
@@ -67,6 +68,7 @@
           * 9: Suspended
    * 40:  OrderType
           * 1: Market
+          * 2: Limit
           * 3: Stop
           * 4: Stop limit
           * P: Pegged

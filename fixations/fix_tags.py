@@ -91,8 +91,9 @@ if __name__ == '__main__':
                    ('highlight', 'light green', 'default')]
         search_str = urwid.Edit((input, u"Search string: "))
         # results = urwid.AttrMap(urwid.Text(get_data_grid_for_search()), None, "focus")
-        # lw = urwid.SimpleListWalker([])
-        search_results = urwid.Text(get_data_grid_for_search())
+        lw = urwid.SimpleFocusListWalker([urwid.Text(get_data_grid_for_search())])
+        search_results = urwid.ListBox(lw)
+        # search_results = urwid.Text(get_data_grid_for_search())
         pile = urwid.Pile([search_str, search_results])
         top = urwid.Filler(pile, valign='top')
 
