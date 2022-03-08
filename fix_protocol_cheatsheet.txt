@@ -105,6 +105,7 @@
           * 0: Broker/Exchange Option
    * 110: MinQty
    * 115: OnBehalfOfCompID (originating firm ID)
+   * 116: OnBehalfOfSubID (originating trader ID)
    * 150: ExecType
           * 0: New/ACK
           * 1: Partial fill
