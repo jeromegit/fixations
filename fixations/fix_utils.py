@@ -160,18 +160,16 @@ def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
     fields = extract_elements_from_file_by_tag_name(fix_version, "Fields.xml", "Field")
     tag_dict_by_id = {}
     for field in fields:
-        id, name, type, desc = extract_tag_data_from_xml_field(field)
-        #        tag_dict_by_id[id] = {'id': id, 'name': name, 'type': type, 'desc': desc, 'values': {}}
-        tag_dict_by_id[id] = FixTag(id, name, type, desc, {})
+        tag_id, name, tag_type, desc = extract_tag_data_from_xml_field(field)
+        tag_dict_by_id[tag_id] = FixTag(tag_id, name, tag_type, desc, {})
 
     # Extract all FIX tag values from Enums XML file and attach them to the tag dictionary
     enums = extract_elements_from_file_by_tag_name(fix_version, "Enums.xml", "Enum")
     for enum in enums:
-        id, name, value, desc = extract_tag_data_from_xml_enum(enum)
-        #        tag_dict_by_id[id]['values'][value] = {'value': value, 'name': name, 'desc': desc}
+        tag_id, name, value, desc = extract_tag_data_from_xml_enum(enum)
         fix_tag_value = FixTagValue(value, name, desc)
-        if id in tag_dict_by_id:
-            tag_dict_by_id[id].values[value] = fix_tag_value
+        if tag_id in tag_dict_by_id:
+            tag_dict_by_id[tag_id].values[value] = fix_tag_value
         else:
             # Somehow the quality of the data is not that great and some enum values reference tags that don't exist
             #            print(f"ERROR: id:{id} for name:{name}, value:{value}, desc:{desc} doesn't exist")
@@ -264,6 +262,17 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
         return {}, [], {}
 
 
+def create_header_for_fix_lines(fix_lines, show_date):
+    headers = ['TAG_ID', 'TAG_NAME']
+    for fix_tags in fix_lines:
+        datetime = fix_tags[FIX_TAG_ID_SENDING_TIME]
+        if show_date is False:
+            datetime = remove_date_from_datetime(datetime)
+        headers.append(datetime)
+
+    return headers
+
+
 def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
                           with_session_level_tags=True, with_top_header=True, show_date=False):
     rows = []
@@ -286,14 +295,10 @@ def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
             cols.append(value)
         rows.append(cols)
 
-    headers = ['TAG_ID', 'TAG_NAME']
-    for fix_tags in fix_lines:
-        datetime = fix_tags[FIX_TAG_ID_SENDING_TIME]
-        if show_date is False:
-            datetime = remove_date_from_datetime(datetime)
-        headers.append(datetime)
+    headers = create_header_for_fix_lines(fix_lines, show_date)
 
     return headers, rows
+
 
 def remove_date_from_datetime(dt_str):
     # assume that the format is ISO 8601-ish and strip anything before the hh:mm:ss
@@ -302,6 +307,7 @@ def remove_date_from_datetime(dt_str):
         return found_timestamp.group(1)
     else:
         return dt_str
+
 
 # -- Configuration --------
 cfg = configparser.ConfigParser()

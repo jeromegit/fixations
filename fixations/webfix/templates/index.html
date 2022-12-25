@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <title>FIXations's webfix app</title>
     <style>
 body {
   font-family: sans-serif;
@@ -74,6 +75,7 @@ window.onload = function(){
 <br>
 {% if rows | length > 0 %}
     <table class="table">
+        <caption>FIX lines in a grid</caption>
         <thead>
         {% for header in headers %}
         <th>{{ header }}</th>
