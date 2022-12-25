@@ -16,6 +16,7 @@ DEFAULT_FIX_VERSION = "4.2"
 FIX_TAG_ID_SENDING_TIME = "52"
 FIX_TAG_ID_SENDER_COMP_ID = "49"
 FIX_TAG_ID_TARGET_COMP_ID = "56"
+SESSION_LEVEL_TAGS = ['8', '34', '9', '10']
 
 DEFAULT_CFG_FILE_PATH = os.environ["HOME"] + "/.fixations.ini"
 DEFAULT_DATA_DIR_PATH = os.environ["HOME"] + "/.fixations"
@@ -173,7 +174,7 @@ def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
             tag_dict_by_id[id].values[value] = fix_tag_value
         else:
             # Somehow the quality of the data is not that great and some enum values reference tags that don't exist
-#            print(f"ERROR: id:{id} for name:{name}, value:{value}, desc:{desc} doesn't exist")
+            #            print(f"ERROR: id:{id} for name:{name}, value:{value}, desc:{desc} doesn't exist")
             pass
 
     return tag_dict_by_id
@@ -196,9 +197,97 @@ def save_tag_dict_to_json_file(tag_dict, json_file):
     with open(json_file, 'w') as json_file_fd:
         json_file_fd.write(json_object)
 
-    # -- Configuration --------
+
+def determine_fix_version(str_fix_lines):
+    for line in str_fix_lines:
+        match = re.search(r"8=FIX\.([.0-9]+)", line)
+        if match:
+            version = match.group(1)
+            return version
+
+    return None
 
 
+def get_fix_tag_dict_for_lines(str_fix_lines):
+    version = determine_fix_version(str_fix_lines)
+    assert version, "ERROR: can't extract FIX version from lines starting with line:{str_fix_lines[0]}"
+    fix_tag_dict = extract_tag_dict_for_fix_version(version)
+
+    return fix_tag_dict
+
+
+def parse_fix_line_into_kvs(line, fix_tag_dict):
+    match = re.search(r"8=FIX\.([.0-9]+)", line)
+    if not match:
+        return None
+
+    fix_start, fix_end = match.span()
+    body_length_start = line.find('9=')
+    separator = line[fix_end:body_length_start]
+
+    fix_line = line[fix_start:]
+    kv_parts = fix_line.split(separator)
+    kvs = {}
+    for kv_part in kv_parts:
+        if kv_part:
+            kv = re.search("^(\d+)=(.*)", kv_part)
+            if kv:
+                tag_id, value = kv.group(1, 2)
+                if tag_id in fix_tag_dict and value in fix_tag_dict[tag_id].values:
+                    value = f"{value} ({fix_tag_dict[tag_id].values[value].name})"
+                kvs[tag_id] = value
+            else:
+                print(f"ERROR: can't tokenize:'{kv_part}' into a key=value pair using separator:'{separator}'")
+    #    print(f"{fix_line}:\n\t{kvs}")
+    return kvs
+
+
+def extract_fix_lines_from_str_lines(str_fix_lines):
+    version = determine_fix_version(str_fix_lines)
+    fix_tag_dict = extract_tag_dict_for_fix_version(version)
+
+    used_fix_tags = {}
+    fix_lines = []
+    for line in str_fix_lines:
+        fix_tags = parse_fix_line_into_kvs(line.strip(), fix_tag_dict)
+        if fix_tags:
+            if FIX_TAG_ID_SENDING_TIME in fix_tags:
+                for fix_tag_key in fix_tags.keys():
+                    used_fix_tags[fix_tag_key] = 1
+                fix_lines.append(fix_tags)
+            else:
+                print(f"ERROR: FIX line w/o SENDING_TIME tag(52): {line}")
+
+    return fix_tag_dict, fix_lines, used_fix_tags
+
+
+def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags, with_session_level_tags=True, with_top_header=True):
+    rows = []
+    if with_top_header:
+        top_header_tags = [FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID]
+    else:
+        top_header_tags = []
+    for fix_tag in (*top_header_tags, *sorted(used_fix_tags, key=lambda k: int(k))):
+        if fix_tag in SESSION_LEVEL_TAGS and with_session_level_tags is False:
+            continue
+        if fix_tag in fix_tag_dict:
+            fix_tag_name = fix_tag_dict[fix_tag].name
+        else:
+            fix_tag_name = '???'
+        cols = [fix_tag, fix_tag_name]
+        for fix_tags in fix_lines:
+            value = fix_tags[fix_tag] if fix_tag in fix_tags else ''
+            cols.append(value)
+        rows.append(cols)
+    headers = ['TAG_ID', 'TAG_NAME']
+    for fix_tags in fix_lines:
+        time = fix_tags[FIX_TAG_ID_SENDING_TIME]
+        headers.append(time)
+
+    return headers, rows
+
+
+# -- Configuration --------
 cfg = configparser.ConfigParser()
 cfg_init()
 
