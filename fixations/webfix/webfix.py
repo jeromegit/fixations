@@ -15,7 +15,9 @@ def home():
     headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
                                           with_session_level_tags=False, with_top_header=False, show_date=show_date)
     context = {'headers': headers,
-               'rows': rows}
+               'rows': rows,
+               'show_date': show_date
+               }
     return render_template("index.html", **context)
 
 

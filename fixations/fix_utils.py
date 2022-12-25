@@ -243,22 +243,25 @@ def parse_fix_line_into_kvs(line, fix_tag_dict):
 
 
 def extract_fix_lines_from_str_lines(str_fix_lines):
-    version = determine_fix_version(str_fix_lines)
-    fix_tag_dict = extract_tag_dict_for_fix_version(version)
+    if len(str_fix_lines) and len(str_fix_lines[0].strip()) > 0:
+        version = determine_fix_version(str_fix_lines)
+        fix_tag_dict = extract_tag_dict_for_fix_version(version)
 
-    used_fix_tags = {}
-    fix_lines = []
-    for line in str_fix_lines:
-        fix_tags = parse_fix_line_into_kvs(line.strip(), fix_tag_dict)
-        if fix_tags:
-            if FIX_TAG_ID_SENDING_TIME in fix_tags:
-                for fix_tag_key in fix_tags.keys():
-                    used_fix_tags[fix_tag_key] = 1
-                fix_lines.append(fix_tags)
-            else:
-                print(f"ERROR: FIX line w/o SENDING_TIME tag(52): {line}")
+        used_fix_tags = {}
+        fix_lines = []
+        for line in str_fix_lines:
+            fix_tags = parse_fix_line_into_kvs(line.strip(), fix_tag_dict)
+            if fix_tags:
+                if FIX_TAG_ID_SENDING_TIME in fix_tags:
+                    for fix_tag_key in fix_tags.keys():
+                        used_fix_tags[fix_tag_key] = 1
+                    fix_lines.append(fix_tags)
+                else:
+                    print(f"ERROR: FIX line w/o SENDING_TIME tag(52): {line}")
 
-    return fix_tag_dict, fix_lines, used_fix_tags
+        return fix_tag_dict, fix_lines, used_fix_tags
+    else:
+        return {}, [], {}
 
 
 def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
