@@ -8,11 +8,12 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    fix_lines_param = request.args.get("fix_lines", "")
+    fix_lines_param = request.args.get('fix_lines', '')
+    show_date = True if request.args.get('show_date', False) else False
     fix_lines_str = fix_lines_param.splitlines()
     fix_tag_dict, fix_lines, used_fix_tags = extract_fix_lines_from_str_lines(fix_lines_str)
     headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
-                                          with_session_level_tags=False, with_top_header=False)
+                                          with_session_level_tags=False, with_top_header=False, show_date=show_date)
     context = {'headers': headers,
                'rows': rows}
     return render_template("index.html", **context)

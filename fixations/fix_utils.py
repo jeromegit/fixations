@@ -261,7 +261,8 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
     return fix_tag_dict, fix_lines, used_fix_tags
 
 
-def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags, with_session_level_tags=True, with_top_header=True):
+def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
+                          with_session_level_tags=True, with_top_header=True, show_date=False):
     rows = []
     if with_top_header:
         top_header_tags = [FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID]
@@ -277,15 +278,27 @@ def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags, with_session_l
         cols = [fix_tag, fix_tag_name]
         for fix_tags in fix_lines:
             value = fix_tags[fix_tag] if fix_tag in fix_tags else ''
+            if 'time' in fix_tag_name.lower() and show_date is False:
+                value = remove_date_from_datetime(value)
             cols.append(value)
         rows.append(cols)
+
     headers = ['TAG_ID', 'TAG_NAME']
     for fix_tags in fix_lines:
-        time = fix_tags[FIX_TAG_ID_SENDING_TIME]
-        headers.append(time)
+        datetime = fix_tags[FIX_TAG_ID_SENDING_TIME]
+        if show_date is False:
+            datetime = remove_date_from_datetime(datetime)
+        headers.append(datetime)
 
     return headers, rows
 
+def remove_date_from_datetime(dt_str):
+    # assume that the format is ISO 8601-ish and strip anything before the hh:mm:ss
+    found_timestamp = re.search(r'(\d+:\d+:\d+.*)', dt_str)
+    if found_timestamp:
+        return found_timestamp.group(1)
+    else:
+        return dt_str
 
 # -- Configuration --------
 cfg = configparser.ConfigParser()

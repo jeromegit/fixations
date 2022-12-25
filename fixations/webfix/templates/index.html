@@ -22,9 +22,10 @@ td, th {
   padding: 2px;
   border: 1px solid #ccc;
   text-align: left;
+  font-size: 12px;
 }
 .row-highlight {
-  background-color: #97DECE;
+  background-color: #D0ECE7 !important;
 }
     </style>
     <script>
@@ -53,6 +54,8 @@ window.onload = function(){
 <form action="" method="get">
     <textarea id="fix_lines" name="fix_lines" rows="10" cols="200">
     </textarea>
+    <br>
+    <input type="checkbox" id="show_date" name="show_date" value="true"><label for="show_date"> Show date</label>
     <br>
     <input type="button" value="Clear"
            onclick="clear_fix_lines()"/>
