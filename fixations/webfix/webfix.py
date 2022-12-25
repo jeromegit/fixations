@@ -5,6 +5,8 @@ from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lin
 
 app = Flask(__name__)
 
+# TODO: create hyperlink to FIX specs for each tag based on FIX version
+# TODO: add more info to README.md
 
 @app.route("/")
 def home():
