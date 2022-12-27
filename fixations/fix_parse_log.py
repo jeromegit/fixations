@@ -3,10 +3,10 @@
 import argparse
 import fileinput
 
-from tabulate import tabulate
+from tabulate import tabulate, SEPARATING_LINE
 
 from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lines_grid, \
-    DEFAULT_FIX_VERSION
+    DEFAULT_FIX_VERSION, FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID
 
 
 def extract_fix_lines_from_files(files):
@@ -38,6 +38,8 @@ if __name__ == '__main__':
         print("Could not find FIX lines.")
         exit(1)
 
-    headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags)
+    top_header_tags = [FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID]
+    headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags, top_header_tags=top_header_tags)
+    rows.insert(len(top_header_tags), SEPARATING_LINE)
     tablefmt = cli_args.grid_style
     print(tabulate(rows, headers=headers, stralign='left', tablefmt=tablefmt))

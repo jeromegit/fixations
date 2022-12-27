@@ -274,12 +274,8 @@ def create_header_for_fix_lines(fix_lines, show_date):
 
 
 def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
-                          with_session_level_tags=True, with_top_header=True, show_date=False):
+                          with_session_level_tags=True, top_header_tags=[], show_date=False):
     rows = []
-    if with_top_header:
-        top_header_tags = [FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID]
-    else:
-        top_header_tags = []
     for fix_tag in (*top_header_tags, *sorted(used_fix_tags, key=lambda k: int(k))):
         if fix_tag in SESSION_LEVEL_TAGS and with_session_level_tags is False:
             continue
