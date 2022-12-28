@@ -15,7 +15,7 @@ def home():
     fix_lines_str = fix_lines_param.splitlines()
     fix_tag_dict, fix_lines, used_fix_tags = extract_fix_lines_from_str_lines(fix_lines_str)
     headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
-                                          with_session_level_tags=False, with_top_header=False, show_date=show_date)
+                                          with_session_level_tags=False, show_date=show_date)
     context = {'headers': headers,
                'rows': rows,
                'show_date': show_date
