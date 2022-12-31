@@ -18,7 +18,8 @@ def home():
                                           with_session_level_tags=False, show_date=show_date)
     context = {'headers': headers,
                'rows': rows,
-               'show_date': show_date
+               'show_date': show_date,
+               'size': f"{len(fix_lines)} lines / {len(fix_lines_param)} chars"
                }
     return render_template("index.html", **context)
 
