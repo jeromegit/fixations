@@ -7,6 +7,11 @@ app = Flask(__name__)
 
 # TODO: create hyperlink to FIX specs for each tag based on FIX version
 # TODO: add more info to README.md
+# TODO: clean up examples
+# TODO: add more example(s)
+
+TEXT_AREA_MAX_COUNT = 8092  # this is mandated by gunicorn
+
 
 @app.route("/")
 def home():
@@ -19,6 +24,7 @@ def home():
     context = {'headers': headers,
                'rows': rows,
                'show_date': show_date,
+               'max_count': TEXT_AREA_MAX_COUNT,
                'size': f"{len(fix_lines)} lines / {len(fix_lines_param)} chars"
                }
     return render_template("index.html", **context)
