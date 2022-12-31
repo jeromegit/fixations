@@ -6,6 +6,10 @@
 body {
   font-family: sans-serif;
 }
+textarea {
+  width: 100%;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -75,7 +79,7 @@ window.onload = function(){
 <br>
 {% if rows | length > 0 %}
     <table class="table">
-        <caption>FIX lines in a grid</caption>
+        <caption>FIX lines in a grid ({{ size }})</caption>
         <thead>
         {% for header in headers %}
         <th>{{ header }}</th>
