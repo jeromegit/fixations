@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from flask import Flask, render_template
 from flask import request
 
@@ -6,9 +7,15 @@ from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lin
 app = Flask(__name__)
 
 # TODO: create hyperlink to FIX specs for each tag based on FIX version
-# TODO: add more info to README.md
+# TODO: add more info to README.md. Use rule80A and 47 as example for fix_args
 # TODO: clean up examples
 # TODO: add more example(s)
+# TODO: simplify directory hierarchy
+# TODO: logs/sample_blank.log is incorrect
+# TODO: add more examples to logs
+# TODO: add some pytest to detect the FIX version for example
+
+
 
 TEXT_AREA_MAX_COUNT = 8092  # this is mandated by gunicorn
 

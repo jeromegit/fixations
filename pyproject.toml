@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "fixations"
-version = "0.1.7"
+version = "0.2.0"
 description = "This is a set of tools to handle FIX protocol data"
 authors = ["Jerome Provensal <jeromegit@provensal.com>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
-keywords = ["fix", "fix-protol"]
+keywords = ["fix", "fix-protocol"]
 homepage = "https://github.com/jeromegit/fixations"
 include = ["fix_repository_2010_edition_20200402"]
 
@@ -14,17 +14,12 @@ fix_parse_log = 'fixations:fix_parse_log.py'
 fix_tags = 'fixations:fix_tags.py'
 
 [tool.poetry.dependencies]
-python = "^3.7"
-urwid = "^2.1"
-termcolor = "2.1.*"
-dataclasses-json = "0.5.7"
-dataclasses = "0.6"
-tabulate = "0.9.0"
-flask = "2.2.2"
-jinja2 = "3.1.2"
+python = "^3.9"
+flask = "^2.2.2"
+gunicorn = "^20.1.0"
+tabulate = "^0.9.0"
 
-[tool.poetry.dev-dependencies]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

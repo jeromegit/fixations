@@ -55,7 +55,7 @@ def create_highlighted_text(text, text_to_highlight, highlight_attr):
 def on_search_change(edit, search_string):
     text = get_data_grid_for_search(search_string)
     text_chunks = create_highlighted_text(text, search_string, 'highlight')
-    search_results.set_text(text_chunks)
+    search_results_text.set_text(text_chunks)
 
 
 def color_search_string(text, search_string, color):
@@ -90,9 +90,10 @@ if __name__ == '__main__':
                    ('input', 'light green', 'default'),
                    ('highlight', 'light green', 'default')]
         search_str = urwid.Edit((input, u"Search string: "))
-        lw = urwid.SimpleFocusListWalker([urwid.Text(get_data_grid_for_search())])
-        search_results = urwid.ListBox(lw)
-        pile = urwid.Pile([search_str, search_results])
+        search_results_text = urwid.Text(get_data_grid_for_search())
+        lw = urwid.SimpleFocusListWalker([search_results_text])
+        search_results_ba = urwid.BoxAdapter(urwid.ListBox(lw), 1000)
+        pile = urwid.Pile([search_str, search_results_ba])
         top = urwid.Filler(pile, valign='top')
 
         urwid.connect_signal(search_str, 'change', on_search_change)
