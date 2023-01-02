@@ -7,6 +7,7 @@ import pathlib
 import re
 import shutil
 from dataclasses import dataclass, field
+from functools import cache
 from typing import Dict
 from xml.dom.minidom import parse
 
@@ -151,7 +152,7 @@ def extract_elements_from_file_by_tag_name(fix_version, file, tag_name):
     elements = doc.getElementsByTagName(tag_name)
     return elements
 
-
+@cache
 def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
     versions = get_list_of_available_fix_versions()
     assert fix_version in versions, f"The specified FIX version:{fix_version} is not valid. Use one of these {versions}"
