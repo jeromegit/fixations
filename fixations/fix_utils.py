@@ -152,6 +152,7 @@ def extract_elements_from_file_by_tag_name(fix_version, file, tag_name):
     elements = doc.getElementsByTagName(tag_name)
     return elements
 
+
 @cache
 def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
     versions = get_list_of_available_fix_versions()
@@ -241,26 +242,35 @@ def parse_fix_line_into_kvs(line, fix_tag_dict):
     return kvs
 
 
+def extract_version_from_first_fix_line(str_fix_lines):
+    for line in str_fix_lines:
+        if len(line.strip()) > 0:
+            version = determine_fix_version(str_fix_lines)
+            return version
+
+    return None
+
+
 def extract_fix_lines_from_str_lines(str_fix_lines):
-    if len(str_fix_lines) and len(str_fix_lines[0].strip()) > 0:
-        version = determine_fix_version(str_fix_lines)
-        fix_tag_dict = extract_tag_dict_for_fix_version(version)
+    if len(str_fix_lines):
+        version = extract_version_from_first_fix_line(str_fix_lines)
+        if version:
+            fix_tag_dict = extract_tag_dict_for_fix_version(version)
+            used_fix_tags = {}
+            fix_lines = []
+            for line in str_fix_lines:
+                fix_tags = parse_fix_line_into_kvs(line.strip(), fix_tag_dict)
+                if fix_tags:
+                    if FIX_TAG_ID_SENDING_TIME in fix_tags:
+                        for fix_tag_key in fix_tags.keys():
+                            used_fix_tags[fix_tag_key] = 1
+                        fix_lines.append(fix_tags)
+                    else:
+                        print(f"ERROR: FIX line w/o SENDING_TIME tag(52): {line}")
 
-        used_fix_tags = {}
-        fix_lines = []
-        for line in str_fix_lines:
-            fix_tags = parse_fix_line_into_kvs(line.strip(), fix_tag_dict)
-            if fix_tags:
-                if FIX_TAG_ID_SENDING_TIME in fix_tags:
-                    for fix_tag_key in fix_tags.keys():
-                        used_fix_tags[fix_tag_key] = 1
-                    fix_lines.append(fix_tags)
-                else:
-                    print(f"ERROR: FIX line w/o SENDING_TIME tag(52): {line}")
+            return fix_tag_dict, fix_lines, used_fix_tags
 
-        return fix_tag_dict, fix_lines, used_fix_tags
-    else:
-        return {}, [], {}
+    return {}, [], {}
 
 
 def create_header_for_fix_lines(fix_lines, show_date):
