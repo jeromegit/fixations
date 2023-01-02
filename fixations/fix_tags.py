@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import re
-import sys
 
 import urwid
 from tabulate import tabulate
@@ -10,6 +9,7 @@ from termcolor import colored
 from fixations.fix_utils import extract_tag_dict_for_fix_version, DEFAULT_FIX_VERSION
 
 DEFAULT_VERSION = "4.2"
+
 
 class Urwid:
     def __init__(self, fix_tag_dict):
@@ -26,10 +26,13 @@ class Urwid:
         urwid.connect_signal(search_str, 'change', self.on_search_change, user_args=[fix_tag_dict, search_results_text])
         try:
             urwid.MainLoop(top, palette).run()
-        except:
-            print("Exiting...")
+        except KeyboardInterrupt:
+            print("Exit requested.")
+        except Exception as e:
+            print("Issue with urwid...")
+            raise e
 
-    def on_search_change(weak_args, fix_tag_dict, search_results_text, search_str, search_str_text):
+    def on_search_change(self, fix_tag_dict, search_results_text, search_str, search_str_text):
         text = get_data_grid_for_search(fix_tag_dict, search_str_text)
         text_chunks = create_highlighted_text(text, search_str_text, 'highlight')
         search_results_text.set_text(text_chunks)
@@ -104,5 +107,7 @@ def main():
         print(color_search_string(search_results, search_str, 'red'))
     else:
         Urwid(fix_tag_dict)
+
+
 if __name__ == '__main__':
     main()

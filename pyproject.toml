@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "fixations"
-version = "0.2.0"
-description = "This is a set of tools to handle FIX protocol data"
+version = "0.2.2"
+description = "This is a set of tools to look up / visualize FIX protocol data"
 authors = ["Jerome Provensal <jeromegit@provensal.com>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
@@ -10,12 +10,12 @@ homepage = "https://github.com/jeromegit/fixations"
 include = ["fix_repository_2010_edition_20200402"]
 
 [tool.poetry.scripts]
-fix_parse_log = 'fix_parse_log:main'
-fix_tags = 'fix_tags:main'
-webfix = 'webfix:main'
+fix_parse_log = 'fixations.fix_parse_log:main'
+fix_tags = 'fixations.fix_tags:main'
+webfix = 'fixations.webfix:main'
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.9"
 flask = "^2.2.2"
 gunicorn = "^20.1.0"
 tabulate = "^0.9.0"
