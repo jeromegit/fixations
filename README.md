@@ -1,4 +1,4 @@
-# Fixations
+# FIXations!
 ## A set of tools to handle FIX protocol data
  - **fix_tags.py** - _explore FIX tags and their associated values either as CLI output or a GUI-like textual interface_
  - **fix_parse_log.py** - _extract FIX lines from a (log) file and present them in a nicely formatted grid_
