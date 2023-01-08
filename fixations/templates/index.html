@@ -105,7 +105,7 @@ window.onload = function(){
         </thead>
         <tbody>
         {% for row in rows %}
-        <tr class="{{ 'row-highlight' if row[0] in ['35', '49', '56'] else '' }}">
+        <tr class="{{ 'row-highlight' if row[0] in ['35', '49', '56', '11'] else '' }}">
             {% for cell in row %}
                {% if cell | length > 36 %}
                  <td class="tdbreak">{{ cell }}</td>

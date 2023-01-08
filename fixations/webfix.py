@@ -11,6 +11,8 @@ app = Flask(__name__)
 # TODO: add more example(s)
 # TODO: add some pytest to detect the FIX version for example
 # TODO: add "direction" to columns to show whether it's a request or a response
+# TODO: catch exceptions and display them into the webpage
+# TODO: deploy to https://vercel.com/
 
 
 TEXT_AREA_MAX_COUNT = 8092  # this is mandated by gunicorn

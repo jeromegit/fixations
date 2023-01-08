@@ -251,6 +251,18 @@ def extract_version_from_first_fix_line(str_fix_lines):
     return None
 
 
+def extract_timestamp(line, fix_tags=None):
+    # assume that the there's a timestamp before the beginning of the FIX k/v tags
+    match = re.search(r"(\d*\d:\d\d:\d\d[,.0-9]*).*8=FIX\.\d+", line)
+    if match:
+        return match.group(1)
+    else:
+        if fix_tags and FIX_TAG_ID_SENDING_TIME in fix_tags:
+            return fix_tags[FIX_TAG_ID_SENDING_TIME]
+        else:
+            return None
+
+
 def extract_fix_lines_from_str_lines(str_fix_lines):
     if len(str_fix_lines):
         version = extract_version_from_first_fix_line(str_fix_lines)
@@ -261,12 +273,13 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
             for line in str_fix_lines:
                 fix_tags = parse_fix_line_into_kvs(line.strip(), fix_tag_dict)
                 if fix_tags:
-                    if FIX_TAG_ID_SENDING_TIME in fix_tags:
+                    timestamp = extract_timestamp(line)
+                    if timestamp:
                         for fix_tag_key in fix_tags.keys():
                             used_fix_tags[fix_tag_key] = 1
-                        fix_lines.append(fix_tags)
+                        fix_lines.append((timestamp, fix_tags))
                     else:
-                        print(f"ERROR: FIX line w/o SENDING_TIME tag(52): {line}")
+                        print(f"ERROR: FIX line w/o timestamp and SENDING_TIME tag{FIX_TAG_ID_SENDING_TIME}: {line}")
 
             return fix_tag_dict, fix_lines, used_fix_tags
 
@@ -275,11 +288,10 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
 
 def create_header_for_fix_lines(fix_lines, show_date):
     headers = ['TAG_ID', 'TAG_NAME']
-    for fix_tags in fix_lines:
-        datetime = fix_tags[FIX_TAG_ID_SENDING_TIME]
+    for (timestamp, fix_tags) in fix_lines:
         if show_date is False:
-            datetime = remove_date_from_datetime(datetime)
-        headers.append(datetime)
+            timestamp = remove_date_from_datetime(timestamp)
+        headers.append(timestamp)
 
     return headers
 
@@ -295,7 +307,7 @@ def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
         else:
             fix_tag_name = '???'
         cols = [fix_tag, fix_tag_name]
-        for fix_tags in fix_lines:
+        for (timestamp, fix_tags) in fix_lines:
             value = fix_tags[fix_tag] if fix_tag in fix_tags else ''
             if 'time' in fix_tag_name.lower() and show_date is False:
                 value = remove_date_from_datetime(value)
