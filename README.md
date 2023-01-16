@@ -1,16 +1,15 @@
 # FIXations!
 ## A set of tools to handle FIX protocol data
- - **fix_tags.py** - _explore FIX tags and their associated values either as CLI output or a GUI-like textual interface_
- - **fix_parse_log.py** - _extract FIX lines from a (log) file and present them in a nicely formatted grid_
- - **webfix.py** - _present copy-n-paste'd FIX lines into a nicely formatted grid_
+ - **fix_tags** - _explore FIX tags and their associated values either as CLI output or a GUI-like textual interface_
+ - **fix_parse_log** - _extract FIX lines from a (log) file and present them in a nicely formatted grid_
+ - **webfix** - _present copy-n-paste'd FIX lines into a nicely formatted grid_
 
 ### Examples
-#### fix_tags.py
+#### fix_tags
+![fix_tags_demo.gif](/images/fix_tags_demo.gif)
 
-[![asciicast](https://asciinema.org/a/551910.svg)](https://asciinema.org/a/551910)
-
-#### fix_parse_log.py
-#### webfix.py
+#### fix_parse_log
+#### webfix
 
 ### Installation
 
