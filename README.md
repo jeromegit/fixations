@@ -6,8 +6,7 @@
 
 ### Examples
 #### fix_tags
-![fix_tags_demo.gif](/images/fix_tags_demo.gif)
-
+[![asciicast](https://asciinema.org/a/551910.svg)](https://asciinema.org/a/551910?autoplay=1&t=1.5)
 #### fix_parse_log
 #### webfix
 
