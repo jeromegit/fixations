@@ -6,6 +6,9 @@
 
 ### Examples
 #### fix_tags.py
+
+[![asciicast](https://asciinema.org/a/551910.svg)](https://asciinema.org/a/551910)
+
 #### fix_parse_log.py
 #### webfix.py
 
