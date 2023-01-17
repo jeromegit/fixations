@@ -4,15 +4,39 @@
  - **fix_parse_log** - _extract FIX lines from a (log) file and present them in a nicely formatted grid_
  - **webfix** - _present copy-n-paste'd FIX lines into a nicely formatted grid_
 
-### Examples
-#### fix_tags
-[![asciicast](https://asciinema.org/a/551910.svg)](https://asciinema.org/a/551910?autoplay=1&t=1.5)
-#### fix_parse_log
-#### webfix
-
 ### Installation
+`pip3 install fixations`
 
-### How to run them
+### Examples of running these applications
+#### fix_tags
+_Click on the link below since it was too small to asciicast in this page_
+[![asciicast](https://asciinema.org/a/551910.svg)](https://asciinema.org/a/551910?autoplay=1&t=1.5)
+
+#### fix_parse_log
+![fix_parse_log_demo](images/fix_parse_log_demo.gif)
+
+#### webfix
+Webfix needs to be used with either Flask (for dev purposes) 
+```commandline
+$ python -m flask --app fixations.webfix run
+ * Serving Flask app 'fixations.webfix'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. 
+Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+```
+
+or something like gunicorn (or other WSGI servers) for production uses:
+```commandline
+$ gunicorn fixations.wsgi:app
+[2023-01-16 19:55:31 -0500] [3380019] [INFO] Starting gunicorn 20.1.0
+[2023-01-16 19:55:31 -0500] [3380019] [INFO] Listening at: http://127.0.0.1:8000 (3380019)
+[2023-01-16 19:55:31 -0500] [3380019] [INFO] Using worker: sync
+[2023-01-16 19:55:31 -0500] [3380028] [INFO] Booting worker with pid: 3380028
+```
+
+![webfix_session](images/webfix_session.png)
 
 
 ## FIX reference data source
