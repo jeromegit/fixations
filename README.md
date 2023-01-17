@@ -10,7 +10,7 @@
 ### Examples of running these applications
 #### fix_tags
 _Click on the link below since it was too small to asciicast in this page_
-[![asciicast](https://asciinema.org/a/551910.svg)](https://asciinema.org/a/551910?autoplay=1&t=1.5)
+[![asciicast](https://asciinema.org/a/551910.svg)](https://asciinema.org/a/551910?autoplay=1&t=2)
 
 #### fix_parse_log
 ![fix_parse_log_demo](images/fix_parse_log_demo.gif)
