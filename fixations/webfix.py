@@ -6,15 +6,6 @@ from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lin
 
 app = Flask(__name__)
 
-# TODO: create hyperlink to FIX specs for each tag based on FIX version
-# TODO: add more info to README.md. Use rule80A and 47 as example for fix_args
-# TODO: add more example(s)
-# TODO: add some pytest to detect the FIX version for example
-# TODO: add "direction" to columns to show whether it's a request or a response
-# TODO: catch exceptions and display them into the webpage
-# TODO: deploy to https://vercel.com/
-
-
 TEXT_AREA_MAX_COUNT = 8092  # this is mandated by gunicorn
 
 

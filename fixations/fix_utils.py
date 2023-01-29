@@ -255,12 +255,13 @@ def extract_timestamp(line, fix_tags=None):
     # assume that the there's a timestamp before the beginning of the FIX k/v tags
     match = re.search(r"(\d*\d:\d\d:\d\d[,.0-9]*).*8=FIX\.\d+", line)
     if match:
-        return match.group(1)
+        return match.group(1), None
     else:
         if fix_tags and FIX_TAG_ID_SENDING_TIME in fix_tags:
-            return fix_tags[FIX_TAG_ID_SENDING_TIME]
+            return fix_tags[FIX_TAG_ID_SENDING_TIME], None
         else:
-            return None
+            error = f"ERROR: FIX line w/o timestamp and SENDING_TIME tag{FIX_TAG_ID_SENDING_TIME}: {line}"
+            return None, error
 
 
 def extract_fix_lines_from_str_lines(str_fix_lines):
@@ -273,13 +274,13 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
             for line in str_fix_lines:
                 fix_tags = parse_fix_line_into_kvs(line.strip(), fix_tag_dict)
                 if fix_tags:
-                    timestamp = extract_timestamp(line)
+                    timestamp, error = extract_timestamp(line, fix_tags)
                     if timestamp:
                         for fix_tag_key in fix_tags.keys():
                             used_fix_tags[fix_tag_key] = 1
                         fix_lines.append((timestamp, fix_tags))
                     else:
-                        print(f"ERROR: FIX line w/o timestamp and SENDING_TIME tag{FIX_TAG_ID_SENDING_TIME}: {line}")
+                        print(error)
 
             return fix_tag_dict, fix_lines, used_fix_tags
 

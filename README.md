@@ -46,3 +46,17 @@ The data is extracted from the FIX specs available here:
 (see fix_repository_2010_edition_20200402.zip).
 
 NOTE: it requires the creation of a login/password to access it.
+
+## TODO:
+ 1. create hyperlink to FIX specs for each tag based on FIX version
+ 2. add more info to README.md. Use rule80A and 47 as example for fix_args
+ 3. add more example(s)
+ 4. add some pytest to detect the FIX version for example
+ 5. add "direction" to columns to show whether it's a request or a response
+ 6. catch exceptions and display them into the webpage
+ 7. deploy to https://vercel.com/
+ 8. allow to create an ASCII table equivalent suitable to be cut-n-paste into a document for exanple
+ 9. add shortlink ala tinyurl.
+ 10. black theme?
+ 11. allow to have no leading timestamp and use the timestamp FIX tags instead
+
