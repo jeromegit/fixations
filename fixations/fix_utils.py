@@ -23,11 +23,13 @@ DEFAULT_CFG_FILE_PATH = os.environ["HOME"] + "/.fixations.ini"
 DEFAULT_DATA_DIR_PATH = os.environ["HOME"] + "/.fixations"
 DEFAULT_FIX_DEFINITIONS_DIR = "fix_repository_2010_edition_20200402"
 FIXATION_CFG_FILE_ENV = "FIXATION_CFG_FILE"
+DEFAULT_STORE_PATH = DEFAULT_DATA_DIR_PATH + '/store.db'
 #
 CFG_FILE_SECTION_MAIN = "main"
 CFG_FILE_KEY_DATA_DIR_PATH = "data_dir_path"
 CFG_FILE_KEY_FIX_DEFINITIONS_PATH = "fix_definitions_path"
 CFG_FILE_KEY_FIX_VERSION = "fix_version"
+CFG_FILE_KEY_STORE_PATH = "store_path"
 
 # Global variable initialized at the bottom of this file
 cfg = None
@@ -71,10 +73,21 @@ def cfg_init():
 def get_cfg_value(key, section=CFG_FILE_SECTION_MAIN):
     assert section in cfg, f"Section:{section} doesn't exist in your configuration file"
     section = cfg[section]
-    assert key in section, f"key:{key} doesn't exist in section:{section} in your configuration file"
-    value = section.get(key)
+    if key in section:
+        value = section.get(key)
+    else:
+        print(f"ERROR: key:{key} doesn't exist in section:{section} in your configuration file")
+        value = None
 
     return value
+
+
+def get_store_path():
+    store_path = get_cfg_value(CFG_FILE_KEY_STORE_PATH)
+    if store_path:
+        return store_path
+    else:
+        return DEFAULT_STORE_PATH
 
 
 def defaults_init():
@@ -93,7 +106,8 @@ def defaults_init():
             cfg_fd.writelines(line + "\n" for line in [f"[{CFG_FILE_SECTION_MAIN}]",
                                                        f"{CFG_FILE_KEY_DATA_DIR_PATH} = {DEFAULT_DATA_DIR_PATH}",
                                                        f"{CFG_FILE_KEY_FIX_DEFINITIONS_PATH} = {fix_definition_dir}",
-                                                       f"{CFG_FILE_KEY_FIX_VERSION} = {DEFAULT_FIX_VERSION}"
+                                                       f"{CFG_FILE_KEY_FIX_VERSION} = {DEFAULT_FIX_VERSION}",
+                                                       f"{CFG_FILE_KEY_STORE_PATH} = {DEFAULT_STORE_PATH}"
                                                        ])
 
 
@@ -105,10 +119,10 @@ def get_xml_text(nodelist):
     return ''.join(rc)
 
 
-def extract_tag_data_from_xml_field(field):
+def extract_tag_data_from_xml_field(field_):
     data = []
     for tag_name in ('Tag', 'Name', 'Type', 'Description'):
-        value = get_xml_text(field.getElementsByTagName(tag_name)[0].childNodes)
+        value = get_xml_text(field_.getElementsByTagName(tag_name)[0].childNodes)
         data.append(value)
     return data
 
@@ -161,8 +175,8 @@ def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
     # Extract all FIX tags from Fields XML file
     fields = extract_elements_from_file_by_tag_name(fix_version, "Fields.xml", "Field")
     tag_dict_by_id = {}
-    for field in fields:
-        tag_id, name, tag_type, desc = extract_tag_data_from_xml_field(field)
+    for field_ in fields:
+        tag_id, name, tag_type, desc = extract_tag_data_from_xml_field(field_)
         tag_dict_by_id[tag_id] = FixTag(tag_id, name, tag_type, desc, {})
 
     # Extract all FIX tag values from Enums XML file and attach them to the tag dictionary
@@ -180,20 +194,20 @@ def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
     return tag_dict_by_id
 
 
-def tag_dict_to_json(tag_dict):
-    dict_of_objects = {k: (v.to_json() if type(v) == FixTag else v) for k, v in tag_dict.items()}
+def tag_dict_to_json(tag_dict_):
+    dict_of_objects = {k: (v.to_json() if type(v) == FixTag else v) for k, v in tag_dict_.items()}
     json_object = json.dumps(dict_of_objects, indent=3)
     return json_object
 
 
 def load_tag_dict_from_json_file(json_file):
     with open(json_file) as json_file_fd:
-        tag_dict = json.load(json_file_fd)
-    return tag_dict
+        tag_dict_ = json.load(json_file_fd)
+    return tag_dict_
 
 
-def save_tag_dict_to_json_file(tag_dict, json_file):
-    json_object = tag_dict_to_json(tag_dict)
+def save_tag_dict_to_json_file(tag_dict_, json_file):
+    json_object = tag_dict_to_json(tag_dict_)
     with open(json_file, 'w') as json_file_fd:
         json_file_fd.write(json_object)
 
@@ -230,7 +244,7 @@ def parse_fix_line_into_kvs(line, fix_tag_dict):
     kvs = {}
     for kv_part in kv_parts:
         if kv_part:
-            kv = re.search("^(\d+)=(.*)", kv_part)
+            kv = re.search(r"^(\d+)=(.*)", kv_part)
             if kv:
                 tag_id, value = kv.group(1, 2)
                 if tag_id in fix_tag_dict and value in fix_tag_dict[tag_id].values:

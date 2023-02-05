@@ -70,18 +70,41 @@ window.onload = function(){
     fix_line_param = urlParams.get('fix_lines');
     if (fix_line_param) {
         fix_lines_elt.value = fix_line_param;
-        update_count();
     }
+
+    var id = document.getElementById('id') || false;
+    if (id) {
+        if (id.value) {
+            var url = window.location.origin;
+            var port = window.location.port;
+            if (port != 80) {
+                url = url +':'+port;
+            }
+            url = "/?id=" + id.value;
+            history.pushState(null, null, url);
+        }
+    }
+
+    var textarea_lines = [];
+    {% autoescape false %}
+    {% for fix_line in fix_lines_list %}
+        textarea_lines.push(decodeURI("{{ fix_line }}"));
+    {% endfor %}
+    {% endautoescape %}
+    fix_lines_elt.value = textarea_lines.join("\n");
+
+    update_count();
 };
     </script>
 
 </head>
 <body>
 <h4>Paste FIX log lines below</h4>
-<form action="" method="get">
-    <textarea id="fix_lines" name="fix_lines" rows="10" maxlength="{{ max_count }}"></textarea>
+<form action="/" method="get">
+    <textarea id="fix_lines" name="fix_lines" rows="10" maxlength="{{ max_count }}"
+              onchange="document.getElementById('id').value = ''"></textarea>
+    <input type="hidden" id="id" name="id" value="{{ str_id }}">
     <div><span id="count">0</span><span id="max_count"> / {{ max_count }}</span></div>
-  </div>
     <input type="checkbox" id="show_date" name="show_date" value="true" {{ "checked" if show_date else "" }}><label for="show_date"> Show date</label>
     <br>
     <input type="button" value="Clear"
