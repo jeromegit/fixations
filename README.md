@@ -61,4 +61,5 @@ NOTE: it requires the creation of a login/password to access it.
  11. [DONE] allow to have no leading timestamp and use the timestamp FIX tags instead
  12. add proper Logger
  13. add DB stats
+ 14. pypi.org can't display the ASCII screencast images. Need to reference github full path?
 

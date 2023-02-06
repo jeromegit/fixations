@@ -30,10 +30,12 @@ class Store:
 
     def save(self, str_id, lines):
         now_timestamp = str(datetime.now())
-        self.conn.execute(
-            f"INSERT INTO {self.TABLE_NAME} (str_id, lines, timestamp) VALUES (?, ?, ?) ON CONFLICT(str_id) "
-            f"DO UPDATE SET lines=?, timestamp=?",
-            (str_id, lines, now_timestamp, lines, now_timestamp))
+        if self.str_id_already_exists(str_id):
+            self.conn.execute(f"UPDATE {self.TABLE_NAME} SET lines=?, timestamp=? WHERE str_id = ?",
+                              (lines, now_timestamp, str_id))
+        else:
+            self.conn.execute(f"INSERT INTO {self.TABLE_NAME} (str_id, lines, timestamp) VALUES (?, ?, ?)",
+                              (str_id, lines, now_timestamp, lines))
         self.conn.commit()
 
     def get(self, str_id):
@@ -41,12 +43,19 @@ class Store:
         rows = self.curs.fetchall()
         if len(rows) == 1:
             return rows[0]
-        elif len(rows) == 0:
+        else:
             print(f"ERROR: not data found for str_id:{str_id}")
             return None, None
 
-    def commit(self) -> None:
-        self.conn.commit()
+    def str_id_already_exists(self, str_id):
+        self.curs.execute(f"SELECT str_id FROM {self.TABLE_NAME} WHERE str_id = ?", (str_id,))
+        rows = self.curs.fetchall()
+
+        return len(rows) == 1
+
+
+def commit(self) -> None:
+    self.conn.commit()
 
 
 if __name__ == "__main__":
