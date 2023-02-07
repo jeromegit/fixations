@@ -35,7 +35,7 @@ class Store:
                               (lines, now_timestamp, str_id))
         else:
             self.conn.execute(f"INSERT INTO {self.TABLE_NAME} (str_id, lines, timestamp) VALUES (?, ?, ?)",
-                              (str_id, lines, now_timestamp, lines))
+                              (str_id, lines, now_timestamp))
         self.conn.commit()
 
     def get(self, str_id):

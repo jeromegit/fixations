@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fixations"
-version = "0.2.5"
+version = "0.2.8"
 description = "This is a set of tools to look up / visualize FIX protocol data"
 authors = ["Jerome Provensal <jeromegit@provensal.com>"]
 license = "GPL-3.0-or-later"
@@ -15,7 +15,7 @@ fix_tags = 'fixations.fix_tags:main'
 webfix = 'fixations.webfix:main'
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.6.5"
 flask = "^2.2.2"
 gunicorn = "^20.1.0"
 tabulate = "^0.9.0"

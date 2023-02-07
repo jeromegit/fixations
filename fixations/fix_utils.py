@@ -167,7 +167,7 @@ def extract_elements_from_file_by_tag_name(fix_version, file, tag_name):
     return elements
 
 
-@cache
+# @cache
 def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
     versions = get_list_of_available_fix_versions()
     assert fix_version in versions, f"The specified FIX version:{fix_version} is not valid. Use one of these {versions}"
