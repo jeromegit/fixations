@@ -7,7 +7,7 @@ import pathlib
 import re
 import shutil
 from dataclasses import dataclass, field
-from functools import cache
+# from functools import cache
 from typing import Dict
 from xml.dom.minidom import parse
 
