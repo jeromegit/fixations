@@ -66,7 +66,7 @@ def cfg_init():
             found_cfg_file = cfg_file
             break
     assert found_cfg_file, \
-        f"Can't find a valid config file, based on this list ofp potential files:{possible_cfg_files}."
+        f"Can't find a valid config file, based on this list of potential files:{possible_cfg_files}."
     cfg.read(found_cfg_file)
 
 
