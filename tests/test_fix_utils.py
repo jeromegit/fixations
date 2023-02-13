@@ -9,7 +9,7 @@ def test_lines_with_no_version():
     bogus_lines = ["\n", "20111107-10:52:22.133: with some stuff but no FIX signature\n", "\n", "\n"]
 
     for line_set in [empty_lines, bogus_lines]:
-        fix_tag_dict, fix_lines, used_fix_tags = extract_fix_lines_from_str_lines(line_set)
+        fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_str_lines(line_set)
         assert len(fix_tag_dict) + len(fix_lines) + len(used_fix_tags) == 0, "Should not have returned any data"
 
 
@@ -60,7 +60,7 @@ def assert_lines_with_timestamp(timestamp_prefix=None):
     lines = [
         f"{timestamp_prefix} 8=FIX.4.2 | 9=0192 | 35=D | 34=000006393 | 52={TAG52_TIMESTAMP} | 49=MY_SCID | 56=MY_TCID | " +
         "44=88.7300 | 114=N | 55=GOOG | 8002=0 | 110=1000 | 10=042"]
-    fix_tag_dict, fix_lines, used_fix_tags = extract_fix_lines_from_str_lines(lines)
+    fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_str_lines(lines)
     assert fix_lines == [(timestamp, {'8': 'FIX.4.2',
                                       '9': '0192',
                                       '35': 'D (NewOrderSingle)',

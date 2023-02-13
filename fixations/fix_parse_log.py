@@ -33,7 +33,7 @@ def main():
     cli_args = parse_args()
     files_to_parse = cli_args.fix_files
 
-    fix_tag_dict, fix_lines, used_fix_tags = extract_fix_lines_from_files(files_to_parse)
+    fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_files(files_to_parse)
     if len(used_fix_tags) == 0:
         print("Could not find FIX lines.")
         exit(1)

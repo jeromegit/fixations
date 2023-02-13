@@ -35,6 +35,16 @@ td, th {
 .row-highlight {
   background-color: #D0ECE7 !important;
 }
+
+tr:hover {
+  background-color: lightyellow !important;
+  font-style: italic;
+}
+
+.first_col {
+   text-decoration: underline;
+   font-weight: bold;
+}
     </style>
 
     <script>
@@ -94,6 +104,15 @@ window.onload = function(){
     fix_lines_elt.value = textarea_lines.join("\n");
 
     update_count();
+
+    var first_cols = document.querySelectorAll('.first_col');
+    Array.from(first_cols).forEach(function (first_col) {
+       first_col.addEventListener('click', function (event) {
+          var tag_num = event.target.textContent;
+          var lookup_url = `{{ lookup_url_template }}`;
+          window.open(lookup_url, '_blank');
+       });
+    });
 };
     </script>
 
@@ -128,12 +147,12 @@ window.onload = function(){
         </thead>
         <tbody>
         {% for row in rows %}
-        <tr class="{{ 'row-highlight' if row[0] in ['35', '49', '56', '11'] else '' }}">
+        <tr {{ 'class=row-highlight' if row[0] in ['35', '49', '56', '11'] else '' }}>
             {% for cell in row %}
                {% if cell | length > 36 %}
-                 <td class="tdbreak">{{ cell }}</td>
+                  <td class="tdbreak">{{ cell }}</td>
                {% else %}
-                 <td>{{ cell }}</td>
+                 <td {{ 'class=first_col' if loop.index == 1 else '' }}>{{ cell }}</td>
                {% endif %}
             {% endfor %}
         </tr>

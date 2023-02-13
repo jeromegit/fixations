@@ -7,7 +7,7 @@ import pathlib
 import re
 import shutil
 from dataclasses import dataclass, field
-# from functools import cache
+from string import Template
 from typing import Dict
 from xml.dom.minidom import parse
 
@@ -24,12 +24,14 @@ DEFAULT_DATA_DIR_PATH = os.environ["HOME"] + "/.fixations"
 DEFAULT_FIX_DEFINITIONS_DIR = "fix_repository_2010_edition_20200402"
 FIXATION_CFG_FILE_ENV = "FIXATION_CFG_FILE"
 DEFAULT_STORE_PATH = DEFAULT_DATA_DIR_PATH + '/store.db'
+DEFAULT_LOOKUP_URL_TEMPLATE = 'https://www.onixs.biz/fix-dictionary/${fix_version}/tagnum_${tag_num}.html'
 #
 CFG_FILE_SECTION_MAIN = "main"
 CFG_FILE_KEY_DATA_DIR_PATH = "data_dir_path"
 CFG_FILE_KEY_FIX_DEFINITIONS_PATH = "fix_definitions_path"
 CFG_FILE_KEY_FIX_VERSION = "fix_version"
 CFG_FILE_KEY_STORE_PATH = "store_path"
+CFG_FILE_KEY_LOOKUP_URL_TEMPLATE = "lookup_url_template"
 
 # Global variable initialized at the bottom of this file
 cfg = None
@@ -70,24 +72,40 @@ def cfg_init():
     cfg.read(found_cfg_file)
 
 
-def get_cfg_value(key, section=CFG_FILE_SECTION_MAIN):
+def get_cfg_value(key, section=CFG_FILE_SECTION_MAIN, warn_when_missing=True):
     assert section in cfg, f"Section:{section} doesn't exist in your configuration file"
     section = cfg[section]
     if key in section:
         value = section.get(key)
     else:
-        print(f"ERROR: key:{key} doesn't exist in section:{section} in your configuration file")
+        if warn_when_missing:
+            print(f"ERROR: key:{key} doesn't exist in section:{section} in your configuration file")
         value = None
 
     return value
 
 
 def get_store_path():
-    store_path = get_cfg_value(CFG_FILE_KEY_STORE_PATH)
-    if store_path:
-        return store_path
+    return get_cfg_for_key(CFG_FILE_KEY_STORE_PATH, DEFAULT_STORE_PATH)
+
+
+def get_lookup_url_template():
+    return get_cfg_for_key(CFG_FILE_KEY_LOOKUP_URL_TEMPLATE, DEFAULT_LOOKUP_URL_TEMPLATE)
+
+
+def get_lookup_url_template_for_js(fix_version):
+    url_template = Template(get_lookup_url_template())
+    url_template_for_js = url_template.substitute({'fix_version': fix_version, 'tag_num': '${tag_num}'})
+
+    return url_template_for_js
+
+
+def get_cfg_for_key(key, default_value):
+    value = get_cfg_value(key, warn_when_missing=False)
+    if value:
+        return value
     else:
-        return DEFAULT_STORE_PATH
+        return default_value
 
 
 def defaults_init():
@@ -108,6 +126,7 @@ def defaults_init():
                                                        f"{CFG_FILE_KEY_FIX_DEFINITIONS_PATH} = {fix_definition_dir}",
                                                        f"{CFG_FILE_KEY_FIX_VERSION} = {DEFAULT_FIX_VERSION}",
                                                        f"{CFG_FILE_KEY_STORE_PATH} = {DEFAULT_STORE_PATH}"
+                                                       f"{CFG_FILE_KEY_LOOKUP_URL_TEMPLATE} ={DEFAULT_LOOKUP_URL_TEMPLATE}",
                                                        ])
 
 
@@ -296,9 +315,9 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
                     else:
                         print(error)
 
-            return fix_tag_dict, fix_lines, used_fix_tags
+            return fix_tag_dict, fix_lines, used_fix_tags, version
 
-    return {}, [], {}
+    return {}, [], {}, None
 
 
 def create_header_for_fix_lines(fix_lines, show_date):

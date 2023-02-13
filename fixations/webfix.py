@@ -3,7 +3,8 @@ from flask import Flask, render_template
 from flask import request
 
 from fixations.fix_store import Store
-from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lines_grid, get_store_path
+from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lines_grid, get_store_path, \
+    get_lookup_url_template_for_js
 from fixations.short_str_id import get_short_str_id
 
 app = Flask(__name__)
@@ -18,15 +19,18 @@ def home():
     fix_lines_list, id_str, char_count = get_fix_lines_list(request)
     show_date = True if request.args.get('show_date', False) else False
 
-    fix_tag_dict, fix_lines, used_fix_tags = extract_fix_lines_from_str_lines(fix_lines_list)
+    fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_str_lines(fix_lines_list)
     headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
                                           with_session_level_tags=False, show_date=show_date)
+    lookup_url_template_for_js = get_lookup_url_template_for_js(fix_version)
+
     context = {'headers': headers,
                'rows': rows,
                'show_date': show_date,
                'max_count': TEXT_AREA_MAX_COUNT,
                'fix_lines_list': fix_lines_list,
                'str_id': id_str,
+               'lookup_url_template': lookup_url_template_for_js,
                'size': f"{len(fix_lines)} lines / {char_count} chars"
                }
     return render_template("index.html", **context)
