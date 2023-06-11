@@ -1,7 +1,10 @@
+from typing import List
+
 import pytest
 
 from fixations.fix_utils import extract_fix_lines_from_str_lines, extract_tag_dict_for_fix_version, \
-    extract_version_from_first_fix_line, extract_timestamp, FIX_TAG_ID_SENDING_TIME
+    extract_version_from_first_fix_line, extract_timestamp, FIX_TAG_ID_SENDING_TIME, get_cfg_value, \
+    CFG_FILE_KEY_FIX_DEFINITIONS_PATH, path_for_fix_version, get_list_of_available_fix_versions
 
 
 def test_lines_with_no_version():
@@ -9,15 +12,37 @@ def test_lines_with_no_version():
     bogus_lines = ["\n", "20111107-10:52:22.133: with some stuff but no FIX signature\n", "\n", "\n"]
 
     for line_set in [empty_lines, bogus_lines]:
-        fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_str_lines(line_set)
+        fix_tag_dict, fix_lines, used_fix_tags, _ = extract_fix_lines_from_str_lines(line_set)
         assert len(fix_tag_dict) + len(fix_lines) + len(used_fix_tags) == 0, "Should not have returned any data"
 
 
+def create_fix_lines_with_version(fix_version: str) -> List[str]:
+    lines_with_ctrl_a = [
+        f"<165>Dec 23 09:39:19.424357 CARLSRPXYA: [CARLSR01A] < 8={fix_version}^A9=396^A35=D^A49=MY_SENDERCOMPID^A56=MY_TARGETCOMPDID^A50=MY_SENDERSUBID..."
+    ]
+
+    return lines_with_ctrl_a
+
 def test_lines_with_versions():
-    line_with_ctrl_a = [
-        "<165>Dec 23 09:39:19.424357 CARLSRPXYA: [CARLSR01A] < 8=FIX.4.2^A9=396^A35=D^A49=MY_SENDERCOMPID^A56=MY_TARGETCOMPDID^A50=MY_SENDERSUBID..."]
-    version = extract_version_from_first_fix_line(line_with_ctrl_a)
-    assert version == '4.2'
+    assert extract_version_from_first_fix_line(create_fix_lines_with_version('FIX.4.2')) == '4.2'
+    assert extract_version_from_first_fix_line(create_fix_lines_with_version('FIX.5.0SP1')) == '5.0SP1'
+    assert extract_version_from_first_fix_line(create_fix_lines_with_version('FIXT.1.1')) == '1.1'
+
+
+def test_path_for_fix_versions():
+    root_dir = get_cfg_value(CFG_FILE_KEY_FIX_DEFINITIONS_PATH)
+    assert path_for_fix_version("4.2") == f"{root_dir}/FIX.4.2/Base"
+    assert path_for_fix_version("5.0") == f"{root_dir}/FIX.5.0/Base"
+    assert path_for_fix_version("5.0SP1") == f"{root_dir}/FIX.5.0SP1/Base"
+    assert path_for_fix_version("1.1") == f"{root_dir}/FIXT.1.1/Base"
+
+
+def test_fix_versions_available():
+    versions = get_list_of_available_fix_versions()
+    assert "4.2" in versions
+    assert "5.0" in versions
+    assert "5.0SP1" in versions
+    assert "1.1" in versions
 
 
 def test_match():
@@ -60,7 +85,7 @@ def assert_lines_with_timestamp(timestamp_prefix=None):
     lines = [
         f"{timestamp_prefix} 8=FIX.4.2 | 9=0192 | 35=D | 34=000006393 | 52={TAG52_TIMESTAMP} | 49=MY_SCID | 56=MY_TCID | " +
         "44=88.7300 | 114=N | 55=GOOG | 8002=0 | 110=1000 | 10=042"]
-    fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_str_lines(lines)
+    _, fix_lines, used_fix_tags, _ = extract_fix_lines_from_str_lines(lines)
     assert fix_lines == [(timestamp, {'8': 'FIX.4.2',
                                       '9': '0192',
                                       '35': 'D (NewOrderSingle)',

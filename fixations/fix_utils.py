@@ -18,6 +18,7 @@ FIX_TAG_ID_SENDING_TIME = "52"
 FIX_TAG_ID_SENDER_COMP_ID = "49"
 FIX_TAG_ID_TARGET_COMP_ID = "56"
 SESSION_LEVEL_TAGS = ['8', '34', '9', '10']
+VERSION_RE = r"8=FIXT*\.([.0-9SP]+)"
 
 DEFAULT_CFG_FILE_PATH = os.environ["HOME"] + "/.fixations.ini"
 DEFAULT_DATA_DIR_PATH = os.environ["HOME"] + "/.fixations"
@@ -154,10 +155,13 @@ def extract_tag_data_from_xml_enum(enum):
     return data
 
 
-def path_for_fix_path(version=None, file=None):
+def path_for_fix_version(version=None, file=None):
     root_dir = get_cfg_value(CFG_FILE_KEY_FIX_DEFINITIONS_PATH)
     if version:
+        # FIX.4.2 | FIXT.1.1
         path = f"{root_dir}/FIX.{version}/Base"
+        if os.path.exists(path) is not True:
+            path = f"{root_dir}/FIXT.{version}/Base"
         if file:
             path = path + "/" + file
     else:
@@ -167,20 +171,20 @@ def path_for_fix_path(version=None, file=None):
 
 
 def get_list_of_available_fix_versions():
-    root_path = path_for_fix_path()
+    root_path = path_for_fix_version()
     root_dir = pathlib.Path(root_path)
     versions = []
-    for entry in root_dir.glob("FIX.*"):
+    for entry in root_dir.glob("FIX*"):
         if os.path.isdir(entry):
             dir_name = os.path.basename(entry)
-            version = re.search(r"FIX.(.*)", dir_name)
-            versions.append(version.group(1))
+            version_match = re.search(r"FIXT*\.(.*)", dir_name)
+            versions.append(version_match.group(1))
 
     return versions
 
 
 def extract_elements_from_file_by_tag_name(fix_version, file, tag_name):
-    fields_file = path_for_fix_path(fix_version, file)
+    fields_file = path_for_fix_version(fix_version, file)
     doc = parse(fields_file)
     elements = doc.getElementsByTagName(tag_name)
     return elements
@@ -233,7 +237,8 @@ def save_tag_dict_to_json_file(tag_dict_, json_file):
 
 def determine_fix_version(str_fix_lines):
     for line in str_fix_lines:
-        match = re.search(r"8=FIX\.([.0-9]+)", line)
+        # FIX.4.2 | FIXT.1.1
+        match = re.search(VERSION_RE, line)
         if match:
             version = match.group(1)
             return version
@@ -250,7 +255,7 @@ def get_fix_tag_dict_for_lines(str_fix_lines):
 
 
 def parse_fix_line_into_kvs(line, fix_tag_dict):
-    match = re.search(r"8=FIX\.([.0-9]+)", line)
+    match = re.search(VERSION_RE, line)
     if not match:
         return None
 
@@ -286,7 +291,7 @@ def extract_version_from_first_fix_line(str_fix_lines):
 
 def extract_timestamp(line, fix_tags=None):
     # assume that the there's a timestamp before the beginning of the FIX k/v tags
-    match = re.search(r"(\d*\d:\d\d:\d\d[,.0-9]*).*8=FIX\.\d+", line)
+    match = re.search(r"(\d*\d:\d\d:\d\d[,.0-9]*).*8=FIXT*\.\d+", line)
     if match:
         return match.group(1), None
     else:
