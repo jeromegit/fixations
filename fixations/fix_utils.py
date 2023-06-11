@@ -6,11 +6,15 @@ import os.path
 import pathlib
 import re
 import shutil
+import time
 from dataclasses import dataclass, field
+from functools import cache
 from string import Template
 from typing import Dict
+from xml.dom.minicompat import NodeList
 from xml.dom.minidom import parse
 
+import requests as requests
 from dataclasses_json import dataclass_json
 
 DEFAULT_FIX_VERSION = "4.2"
@@ -20,22 +24,27 @@ FIX_TAG_ID_TARGET_COMP_ID = "56"
 SESSION_LEVEL_TAGS = ['8', '34', '9', '10']
 VERSION_RE = r"8=FIXT*\.([.0-9SP]+)"
 
-DEFAULT_CFG_FILE_PATH = os.environ["HOME"] + "/.fixations.ini"
-DEFAULT_DATA_DIR_PATH = os.environ["HOME"] + "/.fixations"
-DEFAULT_FIX_DEFINITIONS_DIR = "fix_repository_2010_edition_20200402"
-FIXATION_CFG_FILE_ENV = "FIXATION_CFG_FILE"
-DEFAULT_STORE_PATH = DEFAULT_DATA_DIR_PATH + '/store.db'
-DEFAULT_LOOKUP_URL_TEMPLATE = 'https://www.onixs.biz/fix-dictionary/${fix_version}/tagnum_${tag_num}.html'
-#
+# cfg key
 CFG_FILE_SECTION_MAIN = "main"
 CFG_FILE_KEY_DATA_DIR_PATH = "data_dir_path"
 CFG_FILE_KEY_FIX_DEFINITIONS_PATH = "fix_definitions_path"
 CFG_FILE_KEY_FIX_VERSION = "fix_version"
 CFG_FILE_KEY_STORE_PATH = "store_path"
 CFG_FILE_KEY_LOOKUP_URL_TEMPLATE = "lookup_url_template"
+CFG_ADDITIONAL_FIX_DEFINITIONS_URL = "additional_fix_definition_url"
+CFG_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH = "additional_fix_definition_path"
+
+# cfg / default values
+DEFAULT_CFG_FILE_PATH = os.environ["HOME"] + "/.fixations.ini"
+DEFAULT_DATA_DIR_PATH = os.environ["HOME"] + "/.fixations"
+DEFAULT_FIX_DEFINITIONS_DIR = "fix_repository_2010_edition_20200402"
+FIXATION_CFG_FILE_ENV = "FIXATION_CFG_FILE"
+DEFAULT_STORE_PATH = DEFAULT_DATA_DIR_PATH + '/store.db'
+DEFAULT_LOOKUP_URL_TEMPLATE = 'https://www.onixs.biz/fix-dictionary/${fix_version}/tagnum_${tag_num}.html'
+DEFAULT_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH = "/tmp/additional_fix_definitions.txt"
 
 # Global variable initialized at the bottom of this file
-cfg = None
+Cfg = None
 
 
 @dataclass_json
@@ -56,6 +65,13 @@ class FixTag:
     values: Dict[str, FixTagValue] = field(default_factory=dict)
 
 
+# Caches
+Xml_elements_cache: Dict[str, NodeList] = {}
+Additional_tag_cache: Dict[str, Dict[str, FixTag]] = {}
+Additional_tag_cache_expiry_time = 0
+DEFAULT_CACHE_EXPIRY_TIME_OFFSET = 60 * 60  # 1 hour
+
+
 def cfg_init():
     if not os.path.exists(DEFAULT_CFG_FILE_PATH):
         defaults_init()
@@ -70,12 +86,12 @@ def cfg_init():
             break
     assert found_cfg_file, \
         f"Can't find a valid config file, based on this list of potential files:{possible_cfg_files}."
-    cfg.read(found_cfg_file)
+    Cfg.read(found_cfg_file)
 
 
 def get_cfg_value(key, section=CFG_FILE_SECTION_MAIN, warn_when_missing=True):
-    assert section in cfg, f"Section:{section} doesn't exist in your configuration file"
-    section = cfg[section]
+    assert section in Cfg, f"Section:{section} doesn't exist in your configuration file"
+    section = Cfg[section]
     if key in section:
         value = section.get(key)
     else:
@@ -96,6 +112,8 @@ def get_lookup_url_template():
 
 def get_lookup_url_template_for_js(fix_version):
     url_template = Template(get_lookup_url_template())
+    if fix_version == '1.1':
+        fix_version = 'FIXT1.1'
     url_template_for_js = url_template.substitute({'fix_version': fix_version, 'tag_num': '${tag_num}'})
 
     return url_template_for_js
@@ -127,8 +145,60 @@ def defaults_init():
                                                        f"{CFG_FILE_KEY_FIX_DEFINITIONS_PATH} = {fix_definition_dir}",
                                                        f"{CFG_FILE_KEY_FIX_VERSION} = {DEFAULT_FIX_VERSION}",
                                                        f"{CFG_FILE_KEY_STORE_PATH} = {DEFAULT_STORE_PATH}"
-                                                       f"{CFG_FILE_KEY_LOOKUP_URL_TEMPLATE} ={DEFAULT_LOOKUP_URL_TEMPLATE}",
+                                                       f"{CFG_FILE_KEY_LOOKUP_URL_TEMPLATE} = {DEFAULT_LOOKUP_URL_TEMPLATE}",
+                                                       f"{CFG_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH} = {DEFAULT_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH}"
                                                        ])
+
+
+def extract_additional_fixtags_from_text(text: str) -> Dict[str, FixTag]:
+    lines = text.split('\n')
+    additional_tags_dict = dict()
+    for line in lines:
+        # Assume the add'l fix tags are one per line with the format: tagid = some_value
+        key_value_match = re.search(r'^\s*(\d+)\s*=\s*(\S+)', line)
+        if key_value_match:
+            key, value = key_value_match.groups()
+            additional_tags_dict[key] = FixTag(key, value, 'String', f"N/A for tag:{key} / value:{value}", {})
+
+    return additional_tags_dict
+
+
+def extract_additional_fixtags_text_from_url(additional_fix_definitions_url: str) -> Dict[str, FixTag]:
+    global Additional_tag_cache_expiry_time
+    now = time.time()
+    if additional_fix_definitions_url in Additional_tag_cache and now < Additional_tag_cache_expiry_time:
+        return Additional_tag_cache[additional_fix_definitions_url]
+    else:
+        text = ''
+        if additional_fix_definitions_url.startswith('file://'):
+            local_path = additional_fix_definitions_url[len('file://'):]
+            try:
+                with open(local_path, 'r') as fd:
+                    text = fd.read()
+            except Exception as e:
+                print(f"ERROR: can't read-open file:{local_path}. Error:{e}")
+        else:
+            try:
+                response = requests.get(additional_fix_definitions_url)
+                if response.ok:
+                    text = response.text
+            except Exception as e:
+                print(f"ERROR: can't get data from url:{additional_fix_definitions_url}. Error:{e}")
+
+        additional_fixtags = extract_additional_fixtags_from_text(text)
+        Additional_tag_cache[additional_fix_definitions_url] = additional_fixtags
+        Additional_tag_cache_expiry_time = now + DEFAULT_CACHE_EXPIRY_TIME_OFFSET
+
+        return additional_fixtags
+
+
+def check_for_additional_fix_definitions(additional_fix_definitions_url: str = None) -> Dict[str, FixTag]:
+    if additional_fix_definitions_url is None:
+        additional_fix_definitions_url = get_cfg_for_key(CFG_ADDITIONAL_FIX_DEFINITIONS_URL, None)
+    if additional_fix_definitions_url:
+        return extract_additional_fixtags_text_from_url(additional_fix_definitions_url)
+    else:
+        return {}
 
 
 def get_xml_text(nodelist):
@@ -183,14 +253,20 @@ def get_list_of_available_fix_versions():
     return versions
 
 
-def extract_elements_from_file_by_tag_name(fix_version, file, tag_name):
-    fields_file = path_for_fix_version(fix_version, file)
-    doc = parse(fields_file)
-    elements = doc.getElementsByTagName(tag_name)
-    return elements
+def extract_elements_from_file_by_tag_name(fix_version, file, tag_name) -> NodeList:
+    cache_key = '|'.join([fix_version, file, tag_name])
+    if cache_key in Xml_elements_cache:
+        return Xml_elements_cache[cache_key]
+    else:
+        fields_file = path_for_fix_version(fix_version, file)
+        doc = parse(fields_file)
+        elements = doc.getElementsByTagName(tag_name)
+        Xml_elements_cache[cache_key] = elements
+
+        return elements
 
 
-# @cache
+@cache
 def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
     versions = get_list_of_available_fix_versions()
     assert fix_version in versions, f"The specified FIX version:{fix_version} is not valid. Use one of these {versions}"
@@ -214,7 +290,17 @@ def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
             #            print(f"ERROR: id:{id} for name:{name}, value:{value}, desc:{desc} doesn't exist")
             pass
 
+    additional_tag_dict = check_for_additional_fix_definitions()
+    if len(additional_tag_dict):
+        add_additional_tag_dict(additional_tag_dict, tag_dict_by_id)
+
     return tag_dict_by_id
+
+
+def add_additional_tag_dict(additional_tag_dict: Dict[str, FixTag], tag_dict: Dict[str, FixTag]) -> None:
+    for tag, fix_tag in additional_tag_dict.items():
+        if tag not in tag_dict:
+            tag_dict[tag] = fix_tag
 
 
 def tag_dict_to_json(tag_dict_):
@@ -368,7 +454,7 @@ def remove_date_from_datetime(dt_str):
 
 
 # -- Configuration --------
-cfg = configparser.ConfigParser()
+Cfg = configparser.ConfigParser()
 cfg_init()
 
 if __name__ == '__main__':

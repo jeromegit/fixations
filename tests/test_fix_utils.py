@@ -2,9 +2,15 @@ from typing import List
 
 import pytest
 
+import fixations
 from fixations.fix_utils import extract_fix_lines_from_str_lines, extract_tag_dict_for_fix_version, \
     extract_version_from_first_fix_line, extract_timestamp, FIX_TAG_ID_SENDING_TIME, get_cfg_value, \
-    CFG_FILE_KEY_FIX_DEFINITIONS_PATH, path_for_fix_version, get_list_of_available_fix_versions
+    CFG_FILE_KEY_FIX_DEFINITIONS_PATH, path_for_fix_version, get_list_of_available_fix_versions, \
+    check_for_additional_fix_definitions, Additional_tag_cache, Additional_tag_cache_expiry_time
+
+ADDITIONAL_FIX_TAGS_FILE_URL = 'file://../data/additional_fixtags.txt'
+# LOCAL_HTTP_SERVER_PORT = 23456
+ADDITIONAL_FIX_TAGS_URL = 'https://raw.githubusercontent.com/jeromegit/fixations/main/data/additional_fixtags.txt'
 
 
 def test_lines_with_no_version():
@@ -22,6 +28,7 @@ def create_fix_lines_with_version(fix_version: str) -> List[str]:
     ]
 
     return lines_with_ctrl_a
+
 
 def test_lines_with_versions():
     assert extract_version_from_first_fix_line(create_fix_lines_with_version('FIX.4.2')) == '4.2'
@@ -112,6 +119,49 @@ def assert_lines_with_timestamp(timestamp_prefix=None):
                              '8002': 1,
                              '110': 1,
                              '10': 1}
+
+
+def test_additional_fixtags_with_bogus_urls_and_no_exception_was_raised():
+    check_for_additional_fix_definitions('file://bogus/path.txt')
+    check_for_additional_fix_definitions('https://bogus.com/path.txt')
+    check_for_additional_fix_definitions('https://localhost:23456/path.txt')
+
+
+# def run_local_http_server():
+#     handler = http.server.SimpleHTTPRequestHandler
+# #    cwd = os.getcwd()
+#     handler.directory = os.getcwd()
+#     server = http.server.HTTPServer(("localhost", LOCAL_HTTP_SERVER_PORT), handler)
+#     server.serve_forever()
+
+
+# def test_additional_fixtags_with_http_url():
+#     # # Start the server in a separate thread
+#     # server_thread = threading.Thread(target=run_local_http_server())
+#     # server_thread.start()
+#
+#     fixtags = check_for_additional_fix_definitions(ADDITIONAL_FIX_TAGS_URL)
+#     assert '8005' in fixtags
+#     # server_thread.shutdown()
+#     # server_thread.join()
+
+
+def test_additional_fixtags_with_file_url():
+    fixtags = check_for_additional_fix_definitions(ADDITIONAL_FIX_TAGS_FILE_URL)
+    assert '8005' in fixtags
+
+
+def test_additional_fixtags_was_cached():
+    check_for_additional_fix_definitions(ADDITIONAL_FIX_TAGS_FILE_URL)
+    test_additional_fixtags_with_file_url()
+    del Additional_tag_cache[ADDITIONAL_FIX_TAGS_FILE_URL]['8005']
+    fixtags = check_for_additional_fix_definitions(ADDITIONAL_FIX_TAGS_FILE_URL)
+    assert '8005' not in fixtags
+
+    # invalidate the cache and force to refresh/reload it
+    fixations.fix_utils.Additional_tag_cache_expiry_time = 0
+    fixtags = check_for_additional_fix_definitions(ADDITIONAL_FIX_TAGS_FILE_URL)
+    assert '8005' in fixtags
 
 
 def test_tuple_equal():
