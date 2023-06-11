@@ -1,5 +1,5 @@
 Created Sat Jun 10 22:00:01 2023
-My current Git log: * a9ba7c0ad0 |  (HEAD -> CEXEC-39390_Alert_tag41_on_invite_after_cancelReplace) | [CEXEC-39390] Alert Cond: use the latest tag41/origClOrdId on invite after a cancelReplace | 2023-06-10 19:03:59 -0400 | <jerome>
+My current Git log: * a9ba7c0ad0 |  (HEAD -> bogus commit title) | [ABC-123] Bogus More bogus | 2023-06-10 19:03:59 -0400 | <jerome>
 FIX tags list:
     1 = ACCOUNT
  8002 = CONDITIONAL_OR_FIRM
