@@ -62,4 +62,5 @@ NOTE: it requires the creation of a login/password to access it.
  12. add proper Logger
  13. add DB stats
  14. pypi.org can't display the ASCII screencast images. Need to reference github full path?
+ 15. Give the option to remove or hide/obfuscate some sensitive fields such as tag55 or senderCompId/targetComPid
 
