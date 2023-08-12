@@ -64,5 +64,7 @@ NOTE: it requires the creation of a login/password to access it.
  14. pypi.org can't display the ASCII screencast images. Need to reference GitHub's full path?
  15. Give the option to remove or hide/obfuscate some sensitive fields such as tag55 or senderCompId/targetComPid
  16. Show the delta between each timestamp (below each timestamp)
+ 17. Transpose the grid/matrix
+ 18. Shift-Enter = pressing on [Parse FIX] button
 
 
