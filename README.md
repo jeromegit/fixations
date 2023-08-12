@@ -48,19 +48,21 @@ The data is extracted from the FIX specs available here:
 NOTE: it requires the creation of a login/password to access it.
 
 ## TODO:
- 1. create hyperlink to FIX specs for each tag based on FIX version :white_check_mark:
+ 1. create a hyperlink to FIX specs for each tag based on FIX version :white_check_mark:
  2. add more info to README.md. Use rule80A and 47 as example for fix_args :white_check_mark:
  3. add more example(s)
  4. add some pytest to detect the FIX version for example
  5. add "direction" to columns to show whether it's a request or a response
  6. catch exceptions and display them on the webpage
  7. deploy to https://vercel.com/
- 8. allow creating an ASCII table equivalent suitable to be cut-n-paste into a document for exanple
- 9. add shortlink ala tinyurl and save it into a sqlite3 db store :white_check_mark:
+ 8. allow creating an ASCII table equivalent suitable to be cut-n-paste into a document for example
+ 9. add a short link ala tinyurl and save it into a sqlite3 db store :white_check_mark:
  10. black theme?
  11. allow to have no leading timestamp and use the timestamp FIX tags instead :white_check_mark:
  12. add proper Logger
  13. add DB stats
- 14. pypi.org can't display the ASCII screencast images. Need to reference github full path?
+ 14. pypi.org can't display the ASCII screencast images. Need to reference GitHub's full path?
  15. Give the option to remove or hide/obfuscate some sensitive fields such as tag55 or senderCompId/targetComPid
+ 16. Show the delta between each timestamp (below each timestamp)
+
 
