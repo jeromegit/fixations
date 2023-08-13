@@ -172,39 +172,43 @@ window.onload = function(){
     </thead>
 {% endmacro %}
 
+{% macro format_row_cell(header, cell) %}
+   {%- set classes = [] -%}
+   {%- if cell | length > 36 -%}
+      {{ classes.append("tdbreak") or '' }}
+   {%- endif -%}
+
+   {%- if header in ['35', '39', '49', '56', '11'] -%}
+      {{ classes.append("td-highlight") or '' }}
+   {%- endif -%}
+
+   {%- if classes|length > 0 -%}
+      <td class="{{ classes|join(' ') }}">{{ cell }}</td>
+   {%- else -%}
+      <td>{{ cell }}</td>
+   {%- endif -%}
+{% endmacro %}
+
 {% macro generate_table_body(headers, rows, transpose) %}
     <tbody>
     {% if transpose %}
         {% for row in rows %}
            <tr>
                {%- for cell in row -%}
-                   {%- set classes = [] -%}
-                   {%- if cell | length > 36 -%}
-                      {{ classes.append("tdbreak") or '' }}
-                   {%- endif -%}
-
-                   {%- if headers[loop.index-1] in ['35', '39', '49', '56', '11'] -%}
-                      {{ classes.append("td-highlight") or '' }}
-                   {%- endif -%}
-
-                   {%- if classes|length > 0 -%}
-                      <td class="{{ classes|join(' ') }}">{{ cell }}</td>
-                   {%- else -%}
-                      <td>{{ cell }}</td>
-                   {%- endif -%}
+                  {{ format_row_cell(headers[loop.index-1], cell) }}
                {%- endfor -%}
            </tr>
         {% endfor %}
     {% else %}
-        {% for row in rows %}
+        {% for row in rows -%}
            <tr {{ 'class=row-highlight' if row[0] in ['35', '39', '49', '56', '11'] else '' }}>
-               {% for cell in row %}
-                   {%- if cell | length > 36 -%}
+               {%- for cell in row -%}
+                   {%- if cell | length > 36 %}
                       <td class="tdbreak">{{ cell }}</td>
-                   {%- else -%}
+                   {%- else %}
                      <td {{ 'class=fix_tag_id' if loop.index == 1 else '' }}>{{ cell }}</td>
-                   {% endif %}
-               {% endfor %}
+                   {%- endif -%}
+               {%- endfor %}
            </tr>
         {% endfor %}
     {% endif %}
