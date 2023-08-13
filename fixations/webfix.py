@@ -18,15 +18,17 @@ store = Store(get_store_path())
 def home():
     fix_lines_list, id_str, char_count = get_fix_lines_list(request)
     show_date = True if request.args.get('show_date', False) else False
+    transpose = True if request.args.get('transpose', False) else False
 
     fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_str_lines(fix_lines_list)
     headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
-                                          with_session_level_tags=False, show_date=show_date)
+                                          with_session_level_tags=False, show_date=show_date, transpose=transpose)
     lookup_url_template_for_js = get_lookup_url_template_for_js(fix_version)
 
     context = {'headers': headers,
                'rows': rows,
                'show_date': show_date,
+               'transpose': transpose,
                'max_count': TEXT_AREA_MAX_COUNT,
                'fix_lines_list': fix_lines_list,
                'str_id': id_str,

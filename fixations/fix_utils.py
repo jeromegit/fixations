@@ -422,7 +422,7 @@ def create_header_for_fix_lines(fix_lines, show_date):
 
 
 def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
-                          with_session_level_tags=True, top_header_tags=[], show_date=False):
+                          with_session_level_tags=True, top_header_tags=[], show_date=False, transpose=False):
     rows = []
     for fix_tag in (*top_header_tags, *sorted(used_fix_tags, key=lambda k: int(k))):
         if fix_tag in SESSION_LEVEL_TAGS and with_session_level_tags is False:
@@ -441,7 +441,23 @@ def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
 
     headers = create_header_for_fix_lines(fix_lines, show_date)
 
+    if transpose:
+        headers, rows = transpose_data_grid(headers, rows)
+
     return headers, rows
+
+
+def transpose_data_grid(headers, rows):
+    transposed = []
+    for c in range(len(headers)):
+        row = [headers[c]]
+        for r in range(len(rows)):
+            row.append(rows[r][c])
+        transposed.append(row)
+
+    transposed_headers = transposed.pop(0)
+
+    return transposed_headers, transposed
 
 
 def remove_date_from_datetime(dt_str):

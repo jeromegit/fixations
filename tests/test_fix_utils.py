@@ -7,7 +7,7 @@ import fixations
 from fixations.fix_utils import extract_fix_lines_from_str_lines, extract_tag_dict_for_fix_version, \
     extract_version_from_first_fix_line, extract_timestamp, FIX_TAG_ID_SENDING_TIME, get_cfg_value, \
     CFG_FILE_KEY_FIX_DEFINITIONS_PATH, path_for_fix_version, get_list_of_available_fix_versions, \
-    check_for_additional_fix_definitions, Additional_tag_cache
+    check_for_additional_fix_definitions, Additional_tag_cache, transpose_data_grid
 
 ADDITIONAL_FIX_TAGS_URL = 'https://raw.githubusercontent.com/jeromegit/fixations/main/data/additional_fixtags.txt'
 
@@ -134,6 +134,22 @@ def test_additional_fixtags_with_bogus_urls_and_no_exception_was_raised():
     check_for_additional_fix_definitions('file://bogus/path.txt')
     check_for_additional_fix_definitions('https://bogus.com/path.txt')
     check_for_additional_fix_definitions('https://localhost:23456/path.txt')
+
+
+def test_transpose_data_grid():
+    headers = ['tag_id', 'tag_name', 'time 1', 'time 2']
+    rows = [['1', 'one', '1_1', '1_2'],
+            ['2', 'two', '2_1', '2_2'],
+            ['3', 'three', '3_1', '3_2']
+            ]
+    expected_headers = ['tag_id', '1', '2', '3']
+    expected_rows = [['tag_name', 'one', 'two', 'three'],
+                     ['time 1', '1_1', '2_1', '3_1'],
+                     ['time 2', '1_2', '2_2', '3_2'],
+                     ]
+    actual_headers, actual_rows = transpose_data_grid(headers, rows)
+    assert expected_headers == actual_headers
+    assert expected_rows == actual_rows
 
 
 def test_additional_fixtags_with_http_url():

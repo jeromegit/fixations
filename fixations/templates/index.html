@@ -32,7 +32,7 @@ td, th {
 .tdbreak {
   word-break: break-all;
 }
-.row-highlight {
+.row-highlight, td-highlight {
   background-color: #D0ECE7 !important;
 }
 
@@ -41,10 +41,11 @@ tr:hover {
   font-style: italic;
 }
 
-.first_col {
+.first_col, first_row {
    text-decoration: underline;
    font-weight: bold;
 }
+
 </style>
 
 <script>
@@ -143,6 +144,7 @@ window.onload = function(){
     <input type="hidden" id="id" name="id" value="{{ str_id }}">
     <div><span id="count">0</span><span id="max_count"> / {{ max_count }}</span></div>
     <input type="checkbox" id="show_date" name="show_date" value="true" {{ "checked" if show_date else "" }}><label for="show_date"> Show date</label>
+    <input type="checkbox" id="transpose" name="transpose" value="true" {{ "checked" if transpose else "" }}><label for="transpose"> Transpose data table</label>
     <br>
     <input type="button" value="Clear" title="Ctrl-L to clear"
            onclick="clear_fix_lines()"/>
@@ -160,20 +162,20 @@ window.onload = function(){
         <caption>FIX lines in a grid ({{ size }})</caption>
         <thead>
         {% for header in headers %}
-        <th>{{ header }}</th>
+           <th>{{ header }}</th>
         {% endfor %}
         </thead>
         <tbody>
         {% for row in rows %}
-        <tr {{ 'class=row-highlight' if row[0] in ['35', '39', '49', '56', '11'] else '' }}>
-            {% for cell in row %}
-               {% if cell | length > 36 %}
-                  <td class="tdbreak">{{ cell }}</td>
-               {% else %}
-                 <td {{ 'class=first_col' if loop.index == 1 else '' }}>{{ cell }}</td>
-               {% endif %}
-            {% endfor %}
-        </tr>
+           <tr {{ 'class=row-highlight' if row[0] in ['35', '39', '49', '56', '11'] else '' }}>
+               {% for cell in row %}
+                   {%- if cell | length > 36 -%}
+                      <td class="tdbreak">{{ cell }}</td>
+                   {%- else -%}
+                     <td {{ 'class=first_col' if loop.index == 1 else '' }}>{{ cell }}</td>
+                   {% endif %}
+               {% endfor %}
+           </tr>
         {% endfor %}
         </tbody>
     </table>
