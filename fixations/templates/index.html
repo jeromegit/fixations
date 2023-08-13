@@ -32,7 +32,7 @@ td, th {
 .tdbreak {
   word-break: break-all;
 }
-.row-highlight, td-highlight {
+.row-highlight, .td-highlight {
   background-color: #D0ECE7 !important;
 }
 
@@ -41,7 +41,7 @@ tr:hover {
   font-style: italic;
 }
 
-.first_col, first_row {
+.fix_tag_id {
    text-decoration: underline;
    font-weight: bold;
 }
@@ -124,14 +124,16 @@ window.onload = function(){
 
     update_count();
 
-    var first_cols = document.querySelectorAll('.first_col');
-    Array.from(first_cols).forEach(function (first_col) {
-       first_col.addEventListener('click', function (event) {
+    // Create hyperlink for FIX tag id cells
+    var fix_tag_ids = document.querySelectorAll('.fix_tag_id');
+    Array.from(fix_tag_ids).forEach(function (fix_tag_id) {
+       fix_tag_id.addEventListener('click', function (event) {
           var tag_num = event.target.textContent;
           var lookup_url = `{{ lookup_url_template }}`;
           window.open(lookup_url, '_blank');
        });
     });
+
 };
     </script>
 
@@ -157,27 +159,64 @@ window.onload = function(){
     Example 2 (with ' | ' delimiter)</a>
 
 <br>
-{% if rows | length > 0 %}
-    <table class="table">
-        <caption>FIX lines in a grid ({{ size }})</caption>
-        <thead>
-        {% for header in headers %}
-           <th>{{ header }}</th>
+
+{% macro generate_table_headers(headers, transpose) %}
+    <thead>
+    {%- for header in headers -%}
+    {%- if transpose %}
+       <th class="fix_tag_id">{{ header }}</th>
+    {%- else %}
+       <th>{{ header }}</th>
+    {%- endif -%}
+    {%- endfor %}
+    </thead>
+{% endmacro %}
+
+{% macro generate_table_body(headers, rows, transpose) %}
+    <tbody>
+    {% if transpose %}
+        {% for row in rows %}
+           <tr>
+               {%- for cell in row -%}
+                   {%- set classes = [] -%}
+                   {%- if cell | length > 36 -%}
+                      {{ classes.append("tdbreak") or '' }}
+                   {%- endif -%}
+
+                   {%- if headers[loop.index-1] in ['35', '39', '49', '56', '11'] -%}
+                      {{ classes.append("td-highlight") or '' }}
+                   {%- endif -%}
+
+                   {%- if classes|length > 0 -%}
+                      <td class="{{ classes|join(' ') }}">{{ cell }}</td>
+                   {%- else -%}
+                      <td>{{ cell }}</td>
+                   {%- endif -%}
+               {%- endfor -%}
+           </tr>
         {% endfor %}
-        </thead>
-        <tbody>
+    {% else %}
         {% for row in rows %}
            <tr {{ 'class=row-highlight' if row[0] in ['35', '39', '49', '56', '11'] else '' }}>
                {% for cell in row %}
                    {%- if cell | length > 36 -%}
                       <td class="tdbreak">{{ cell }}</td>
                    {%- else -%}
-                     <td {{ 'class=first_col' if loop.index == 1 else '' }}>{{ cell }}</td>
+                     <td {{ 'class=fix_tag_id' if loop.index == 1 else '' }}>{{ cell }}</td>
                    {% endif %}
                {% endfor %}
            </tr>
         {% endfor %}
-        </tbody>
+    {% endif %}
+    </tbody>
+{% endmacro %}
+
+{% if rows | length > 0 %}
+    <table class="table">
+        <caption>FIX lines in a grid ({{ size }})</caption>
+        {{ generate_table_headers(headers, transpose) }}
+
+        {{ generate_table_body(headers, rows, transpose) }}
     </table>
 {% endif %}
 </body>
