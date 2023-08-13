@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import pytest
@@ -8,9 +9,17 @@ from fixations.fix_utils import extract_fix_lines_from_str_lines, extract_tag_di
     CFG_FILE_KEY_FIX_DEFINITIONS_PATH, path_for_fix_version, get_list_of_available_fix_versions, \
     check_for_additional_fix_definitions, Additional_tag_cache
 
-ADDITIONAL_FIX_TAGS_FILE_URL = 'file://../data/additional_fixtags.txt'
-# LOCAL_HTTP_SERVER_PORT = 23456
 ADDITIONAL_FIX_TAGS_URL = 'https://raw.githubusercontent.com/jeromegit/fixations/main/data/additional_fixtags.txt'
+
+
+def get_additional_fixtags_file_url() -> str:
+    data_dir_path = 'data'
+    if not os.path.exists(data_dir_path):
+        data_dir_path = '../data'
+        assert os.path.exists(data_dir_path), "Can't find data dir!"
+    file_url = f'file://{data_dir_path}/additional_fixtags.txt'
+
+    return file_url
 
 
 def test_lines_with_no_version():
@@ -133,20 +142,20 @@ def test_additional_fixtags_with_http_url():
 
 
 def test_additional_fixtags_with_file_url():
-    fixtags = check_for_additional_fix_definitions(ADDITIONAL_FIX_TAGS_FILE_URL)
+    fixtags = check_for_additional_fix_definitions(get_additional_fixtags_file_url())
     assert '8005' in fixtags
 
 
 def test_additional_fixtags_was_cached():
-    check_for_additional_fix_definitions(ADDITIONAL_FIX_TAGS_FILE_URL)
+    check_for_additional_fix_definitions(get_additional_fixtags_file_url())
     test_additional_fixtags_with_file_url()
-    del Additional_tag_cache[ADDITIONAL_FIX_TAGS_FILE_URL]['8005']
-    fixtags = check_for_additional_fix_definitions(ADDITIONAL_FIX_TAGS_FILE_URL)
+    del Additional_tag_cache[get_additional_fixtags_file_url()]['8005']
+    fixtags = check_for_additional_fix_definitions(get_additional_fixtags_file_url())
     assert '8005' not in fixtags
 
     # invalidate the cache and force to refresh/reload it
     fixations.fix_utils.Additional_tag_cache_expiry_time = 0
-    fixtags = check_for_additional_fix_definitions(ADDITIONAL_FIX_TAGS_FILE_URL)
+    fixtags = check_for_additional_fix_definitions(get_additional_fixtags_file_url())
     assert '8005' in fixtags
 
 
