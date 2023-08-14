@@ -163,16 +163,18 @@ window.onload = function(){
 {% macro generate_table_headers(headers, transpose) %}
     <thead>
     {%- for header in headers -%}
-    {%- if transpose %}
-       <th class="fix_tag_id">{{ header }}</th>
-    {%- else %}
-       <th>{{ header }}</th>
-    {%- endif -%}
+       {%- autoescape false %}
+           {%- if transpose %}
+               <th class="fix_tag_id">{{ header }}</th>
+            {%- else %}
+               <th>{{ header|replace('\n', '<br>') }}</th>
+            {%- endif -%}
+       {%- endautoescape -%}
     {%- endfor %}
     </thead>
 {% endmacro %}
 
-{% macro format_row_cell(header, cell) %}
+{% macro format_row_transpose_cell(header, cell) %}
    {%- set classes = [] -%}
    {%- if cell | length > 36 -%}
       {{ classes.append("tdbreak") or '' }}
@@ -185,7 +187,9 @@ window.onload = function(){
    {%- if classes|length > 0 -%}
       <td class="{{ classes|join(' ') }}">{{ cell }}</td>
    {%- else -%}
-      <td>{{ cell }}</td>
+      {%- autoescape false %}
+         <td>{{ cell|replace('\n', '<br>') }}</td>
+      {%- endautoescape -%}
    {%- endif -%}
 {% endmacro %}
 
@@ -195,7 +199,7 @@ window.onload = function(){
         {% for row in rows %}
            <tr>
                {%- for cell in row -%}
-                  {{ format_row_cell(headers[loop.index-1], cell) }}
+                  {{ format_row_transpose_cell(headers[loop.index-1], cell) }}
                {%- endfor -%}
            </tr>
         {% endfor %}

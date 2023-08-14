@@ -7,7 +7,7 @@ import fixations
 from fixations.fix_utils import extract_fix_lines_from_str_lines, extract_tag_dict_for_fix_version, \
     extract_version_from_first_fix_line, extract_timestamp, FIX_TAG_ID_SENDING_TIME, get_cfg_value, \
     CFG_FILE_KEY_FIX_DEFINITIONS_PATH, path_for_fix_version, get_list_of_available_fix_versions, \
-    check_for_additional_fix_definitions, Additional_tag_cache, transpose_data_grid
+    check_for_additional_fix_definitions, Additional_tag_cache, transpose_data_grid, get_timestamp_with_delta
 
 ADDITIONAL_FIX_TAGS_URL = 'https://raw.githubusercontent.com/jeromegit/fixations/main/data/additional_fixtags.txt'
 
@@ -173,6 +173,34 @@ def test_additional_fixtags_was_cached():
     fixations.fix_utils.Additional_tag_cache_expiry_time = 0
     fixtags = check_for_additional_fix_definitions(get_additional_fixtags_file_url())
     assert '8005' in fixtags
+
+
+def test_get_timestamp_with_delta():
+    # With None and no subsec
+    assert get_timestamp_with_delta("12:34:56", None) == "12:34:56"
+    assert get_timestamp_with_delta("12:34:57", "12:34:56") == "12:34:57\n(+1)"
+
+    # negative deltas
+    assert get_timestamp_with_delta("12:34:56", "12:34:57") == "12:34:56\n(-1)"
+    assert get_timestamp_with_delta("12:34:00", "12:34:57") == "12:34:00\n(-57)"
+    assert get_timestamp_with_delta("12:13:00", "12:34:57") == "12:13:00\n(-21:57)"
+    assert get_timestamp_with_delta("12:13:00", "12:34:57.123") == "12:13:00\n(-21:57.123)"
+
+    # with sub-second
+    assert get_timestamp_with_delta("12:34:57.1", "12:34:56") == "12:34:57.1\n(+1.1)"
+    assert get_timestamp_with_delta("12:34:57.222", "12:34:56.111") == "12:34:57.222\n(+1.111)"
+    assert get_timestamp_with_delta("12:34:57.222001", "12:34:56.111001") == "12:34:57.222001\n(+1.111)"
+    assert get_timestamp_with_delta("12:34:56.123457", "12:34:56.000001") == "12:34:56.123457\n(+.123456)"
+    assert get_timestamp_with_delta("23:59:59.999999", "00:00:00") == "23:59:59.999999\n(+23:59:59.999999)"
+    assert get_timestamp_with_delta("23:59:59.999999", "00:00:00.000") == "23:59:59.999999\n(+23:59:59.999999)"
+    assert get_timestamp_with_delta("23:59:59.999999", "00:00:00.000000") == "23:59:59.999999\n(+23:59:59.999999)"
+    assert get_timestamp_with_delta("23:59:59.999999", "00:00:00.000001") == "23:59:59.999999\n(+23:59:59.999998)"
+
+    # Bad format
+    assert get_timestamp_with_delta("12:34:57.",
+                                    "12:34:56") == "12:34:57.\n(??? time data '12:34:57.' does not match format '%H:%M:%S.%f' ???)"
+    assert get_timestamp_with_delta("12:34:57",
+                                    "12:34:56.") == "12:34:57\n(??? time data '12:34:56.' does not match format '%H:%M:%S.%f' ???)"
 
 
 def test_tuple_equal():

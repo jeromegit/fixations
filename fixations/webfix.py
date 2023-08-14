@@ -22,7 +22,8 @@ def home():
 
     fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_str_lines(fix_lines_list)
     headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
-                                          with_session_level_tags=False, show_date=show_date, transpose=transpose)
+                                          with_session_level_tags=False,
+                                          show_date=show_date, transpose=transpose)
     lookup_url_template_for_js = get_lookup_url_template_for_js(fix_version)
 
     context = {'headers': headers,
@@ -41,7 +42,7 @@ def home():
 def get_fix_lines_list(req):
     str_id = req.args.get('id')
     if str_id:
-        fix_lines_str, timestamp = store.get(str_id)
+        fix_lines_str, _ = store.get(str_id)
         if fix_lines_str is None:
             fix_lines_str = f"There's no record for id:{str_id}!"
         fix_lines_list = fix_lines_str.splitlines()

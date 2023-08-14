@@ -8,9 +8,10 @@ import re
 import shutil
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from functools import cache
 from string import Template
-from typing import Dict
+from typing import Dict, Union, List
 from xml.dom.minicompat import NodeList
 from xml.dom.minidom import parse
 
@@ -139,15 +140,16 @@ def defaults_init():
     if not os.path.exists(DEFAULT_CFG_FILE_PATH):
         fix_definition_dir = DEFAULT_DATA_DIR_PATH + "/" + DEFAULT_FIX_DEFINITIONS_DIR
         print(f"Creating default config file:{DEFAULT_CFG_FILE_PATH}... Edit the file as needed.")
+        default_cfg = [f"[{CFG_FILE_SECTION_MAIN}]",
+                       f"{CFG_FILE_KEY_DATA_DIR_PATH} = {DEFAULT_DATA_DIR_PATH}",
+                       f"{CFG_FILE_KEY_FIX_DEFINITIONS_PATH} = {fix_definition_dir}",
+                       f"{CFG_FILE_KEY_FIX_VERSION} = {DEFAULT_FIX_VERSION}",
+                       f"{CFG_FILE_KEY_STORE_PATH} = {DEFAULT_STORE_PATH}"
+                       f"{CFG_FILE_KEY_LOOKUP_URL_TEMPLATE} = {DEFAULT_LOOKUP_URL_TEMPLATE}",
+                       f"{CFG_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH} = {DEFAULT_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH}"
+                       ]
         with open(DEFAULT_CFG_FILE_PATH, "w") as cfg_fd:
-            cfg_fd.writelines(line + "\n" for line in [f"[{CFG_FILE_SECTION_MAIN}]",
-                                                       f"{CFG_FILE_KEY_DATA_DIR_PATH} = {DEFAULT_DATA_DIR_PATH}",
-                                                       f"{CFG_FILE_KEY_FIX_DEFINITIONS_PATH} = {fix_definition_dir}",
-                                                       f"{CFG_FILE_KEY_FIX_VERSION} = {DEFAULT_FIX_VERSION}",
-                                                       f"{CFG_FILE_KEY_STORE_PATH} = {DEFAULT_STORE_PATH}"
-                                                       f"{CFG_FILE_KEY_LOOKUP_URL_TEMPLATE} = {DEFAULT_LOOKUP_URL_TEMPLATE}",
-                                                       f"{CFG_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH} = {DEFAULT_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH}"
-                                                       ])
+            cfg_fd.writelines(line + "\n" for line in default_cfg)
 
 
 def extract_additional_fixtags_from_text(text: str) -> Dict[str, FixTag]:
@@ -411,18 +413,22 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
     return {}, [], {}, None
 
 
-def create_header_for_fix_lines(fix_lines, show_date):
+def create_header_for_fix_lines(fix_lines: str, show_date: bool) -> List[str]:
     headers = ['TAG_ID', 'TAG_NAME']
+    previous_timestamp = None
     for (timestamp, fix_tags) in fix_lines:
         if show_date is False:
             timestamp = remove_date_from_datetime(timestamp)
-        headers.append(timestamp)
+        timestamp_with_delta = get_timestamp_with_delta(timestamp, previous_timestamp)
+        previous_timestamp = timestamp
+        headers.append(timestamp_with_delta)
 
     return headers
 
 
 def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
-                          with_session_level_tags=True, top_header_tags=[], show_date=False, transpose=False):
+                          with_session_level_tags=True, top_header_tags=[],
+                          show_date=False, transpose=False):
     rows = []
     for fix_tag in (*top_header_tags, *sorted(used_fix_tags, key=lambda k: int(k))):
         if fix_tag in SESSION_LEVEL_TAGS and with_session_level_tags is False:
@@ -467,6 +473,36 @@ def remove_date_from_datetime(dt_str):
         return found_timestamp.group(1)
     else:
         return dt_str
+
+
+def get_timestamp_with_delta(timestamp: str, previous_timestamp: Union[str, None]) -> str:
+    if previous_timestamp:
+        stripped_timestamp = remove_date_from_datetime(timestamp)
+        stripped_previous_timestamp = remove_date_from_datetime(previous_timestamp)
+
+        try:
+            dt = datetime.strptime(stripped_timestamp, '%H:%M:%S.%f' if '.' in stripped_timestamp else "%H:%M:%S")
+            previous_dt = datetime.strptime(stripped_previous_timestamp,
+                                            '%H:%M:%S.%f' if '.' in stripped_previous_timestamp else "%H:%M:%S")
+            delta = dt - previous_dt
+            delta_in_hhmmssus = convert_delta_into_hhmmssus(delta)
+
+            return f"{timestamp}\n({delta_in_hhmmssus})"
+
+        except Exception as e:
+            return f"{timestamp}\n(??? {e} ???)"
+    else:
+        return timestamp
+
+
+def convert_delta_into_hhmmssus(delta: timedelta) -> str:
+    sign = '-' if delta.total_seconds() < 0 else '+'
+    delta_df = datetime(2000, 1, 1) + abs(delta)
+    delta_in_hhmmssus = delta_df.strftime('%H:%M:%S.%f')
+    delta_in_hhmmssus = re.sub(r"[0.]+$", "", delta_in_hhmmssus)  # strip trailing 0's
+    delta_in_hhmmssus = re.sub(r"^[0:]+", "", delta_in_hhmmssus)  # replace leading 0:'s
+
+    return sign + delta_in_hhmmssus
 
 
 # -- Configuration --------
