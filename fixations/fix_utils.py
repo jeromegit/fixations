@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import cache
 from string import Template
-from typing import Dict, Union, List
+from typing import Dict, Union, List, ClassVar, Tuple, Set
 from xml.dom.minicompat import NodeList
 from xml.dom.minidom import parse
 
@@ -64,6 +64,36 @@ class FixTag:
     type: str
     desc: str
     values: Dict[str, FixTagValue] = field(default_factory=dict)
+
+
+@dataclass_json
+@dataclass
+class FixComponent:
+    id: str  # componentId it's part of
+    tag: str  # the tag can be numeric FIX tag or a (sub)group name
+    indent: int
+    position: str
+
+
+@dataclass_json
+@dataclass
+class FixBlock:
+    id: str
+    name: str
+    count_tag: str  # to be used as block's common tag
+    start_tag: str  # to be used as start of block
+    end_tag: str  # to be used as end of block
+    components_by_position: Dict[int, FixComponent] = field(default_factory=dict)
+
+
+@dataclass
+class FixVersionInfo:
+    version: str
+    fix_tags_by_tag_id: Dict[str, FixTag] = field(default_factory=dict)
+
+    fix_blocks_by_id: Dict[int, 'FixBlock'] = field(default_factory=dict)
+    fix_blocks_by_name: Dict[str, 'FixBlock'] = field(default_factory=dict)
+    fix_blocks_by_count_tag: Dict[int, 'FixBlock'] = field(default_factory=dict)
 
 
 # Caches
@@ -211,19 +241,24 @@ def get_xml_text(nodelist):
     return ''.join(rc)
 
 
-def extract_tag_data_from_xml_field(field_):
-    data = []
-    for tag_name in ('Tag', 'Name', 'Type', 'Description'):
-        value = get_xml_text(field_.getElementsByTagName(tag_name)[0].childNodes)
-        data.append(value)
-    return data
+def extract_tag_data_from_xml_field(field):
+    return extract_tag_data_from_xml(field, ['Tag', 'Name', 'Type', 'Description'])
 
 
 def extract_tag_data_from_xml_enum(enum):
+    return extract_tag_data_from_xml(enum, ['Tag', 'SymbolicName', 'Value', 'Description'])
+
+
+def extract_tag_data_from_xml_msg_content(msg_content):
+    return extract_tag_data_from_xml(msg_content, ['ComponentID', 'TagText', 'Indent', 'Position'])
+
+
+def extract_tag_data_from_xml(item: str, tag_names: List) -> List[str]:
     data = []
-    for tag_name in ('Tag', 'SymbolicName', 'Value', 'Description'):
-        value = get_xml_text(enum.getElementsByTagName(tag_name)[0].childNodes)
+    for tag_name in tag_names:
+        value = get_xml_text(item.getElementsByTagName(tag_name)[0].childNodes)
         data.append(value)
+
     return data
 
 
@@ -269,24 +304,24 @@ def extract_elements_from_file_by_tag_name(fix_version, file, tag_name) -> NodeL
 
 
 @cache
-def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
+def extract_info_for_fix_version(fix_version=DEFAULT_FIX_VERSION) -> FixVersionInfo:
     versions = get_list_of_available_fix_versions()
     assert fix_version in versions, f"The specified FIX version:{fix_version} is not valid. Use one of these {versions}"
+    fix_version_info = FixVersionInfo(fix_version)
 
     # Extract all FIX tags from Fields XML file
     fields = extract_elements_from_file_by_tag_name(fix_version, "Fields.xml", "Field")
-    tag_dict_by_id = {}
     for field_ in fields:
         tag_id, name, tag_type, desc = extract_tag_data_from_xml_field(field_)
-        tag_dict_by_id[tag_id] = FixTag(tag_id, name, tag_type, desc, {})
+        fix_version_info.fix_tags_by_tag_id[tag_id] = FixTag(tag_id, name, tag_type, desc, {})
 
     # Extract all FIX tag values from Enums XML file and attach them to the tag dictionary
     enums = extract_elements_from_file_by_tag_name(fix_version, "Enums.xml", "Enum")
     for enum in enums:
         tag_id, name, value, desc = extract_tag_data_from_xml_enum(enum)
         fix_tag_value = FixTagValue(value, name, desc)
-        if tag_id in tag_dict_by_id:
-            tag_dict_by_id[tag_id].values[value] = fix_tag_value
+        if tag_id in fix_version_info.fix_tags_by_tag_id:
+            fix_version_info.fix_tags_by_tag_id[tag_id].values[value] = fix_tag_value
         else:
             # Somehow the quality of the data is not that great and some enum values reference tags that don't exist
             #            print(f"ERROR: id:{id} for name:{name}, value:{value}, desc:{desc} doesn't exist")
@@ -294,9 +329,94 @@ def extract_tag_dict_for_fix_version(fix_version=DEFAULT_FIX_VERSION):
 
     additional_tag_dict = check_for_additional_fix_definitions()
     if len(additional_tag_dict):
-        add_additional_tag_dict(additional_tag_dict, tag_dict_by_id)
+        add_additional_tag_dict(additional_tag_dict, fix_version_info.fix_tags_by_tag_id)
 
-    return tag_dict_by_id
+    extract_fix_blocks_for_fix_version(fix_version_info)
+
+    return fix_version_info
+
+
+# Explanation of the
+# Also see https://www.onixs.biz/fix-dictionary/4.4/compBlock_Parties.html
+# MsgContents.xml contains a description of all blocks and their comprising items
+#   * all items are grouped under the same ComponentID (say 1012)
+#           <MsgContent added="FIX.4.3">
+#                 <ComponentID>1012</ComponentID>
+#                 <TagText>453</TagText>
+#                 <Indent>0</Indent>
+#                 <Position>1</Position>
+#                 <Reqd>0</Reqd>
+#                 <Description>Repeating group below should contain unique combinations of PartyID, PartyIDSource,
+#                              and PartyRole</Description>
+#         </MsgContent>
+#   * the TagText if the FIX tag (such as 453)
+#      Note that in the case of a subgroup it will not be a tag but a group name such as PtysSubGrp
+#      One can convert it to an actual FIX tag by finding the FixBlock with name = TagText and getting its count_tag
+#   * the Indent seems to be for display purposes
+#   * the position (starting with 1) is also important
+#
+#  Component.xml contains a mapping of ComponentID (say 1012) and Name
+#   * it's useful for group name such as 2077 (ComponentID) -> PtysSubGrp (Name)
+#         <Component added="FIX.4.3">
+#            <ComponentID>1012</ComponentID>
+#            <ComponentType>BlockRepeating</ComponentType>
+#            <CategoryID>Common</CategoryID>
+#            <Name>Parties</Name>
+#            <AbbrName>Pty</AbbrName>
+#            <NotReqXML>0</NotReqXML>
+#            <Description>The Parties component block is used to identify and convey information on the entities
+#               both central and peripheral to the financial transaction represented by the FIX message containing
+#               the Parties Block. The Parties block allows many different types of entites to be expressed through
+#               use of the PartyRole field and identifies the source of the PartyID through the the PartyIDSource.
+#            </Description>
+#         </Component>
+# Example:
+# 453=6    <- number of items in the group (ComponentID=1012)
+#   448=TDEM <- always starts with 448
+#   447=D
+#   452=1
+#   802=2  <- number of sub-groups (ComponentID=2077, group PtysSubGrp)
+#     523=4203
+#     803=4014
+#
+#     523=PT3QB789TSUIDF371261
+#     803=4025
+#
+#   (5 more repeated group starting with 448)
+def extract_fix_blocks_for_fix_version(fix_version_info: FixVersionInfo) -> None:
+    # Parse the Components and MsgContents XML file to get all groups/blocks and their components
+    blocks = extract_elements_from_file_by_tag_name(fix_version_info.version, "Components.xml", "Component")
+    for block in blocks:
+        block_id, block_type, name = extract_tag_data_from_xml(block, ['ComponentID', 'ComponentType', 'Name'])
+        if block_type == 'BlockRepeating' or block_type == 'ImplicitBlockRepeating':
+            fix_block = FixBlock(block_id, name, '', '', {})
+            fix_version_info.fix_blocks_by_id[block_id] = fix_block
+            fix_version_info.fix_blocks_by_name[name] = fix_block
+
+    components = extract_elements_from_file_by_tag_name(fix_version_info.version, "MsgContents.xml", "MsgContent")
+    for component in components:
+        block_id, tag, indent, position = extract_tag_data_from_xml(component,
+                                                                    ['ComponentID', 'TagText', 'Indent', 'Position'])
+        if block_id in fix_version_info.fix_blocks_by_id:
+            fix_block = fix_version_info.fix_blocks_by_id[block_id]
+            fix_component = FixComponent(block_id, tag, indent, position)
+            fix_block.components_by_position[position] = fix_component
+
+            if position == '1':
+                fix_block.count_tag = tag
+                fix_version_info.fix_blocks_by_count_tag[tag] = fix_block
+            elif position == '2':
+                fix_block.start_tag = tag
+            fix_block.end_tag = tag
+
+    convert_end_tags_as_name_to_fix_tags(fix_version_info)
+
+
+def convert_end_tags_as_name_to_fix_tags(fix_version_info: FixVersionInfo) -> None:
+    for block in fix_version_info.fix_blocks_by_id.values():
+        eng_tag_block = fix_version_info.fix_blocks_by_name.get(block.end_tag, None)
+        if eng_tag_block:
+            block.end_tag = eng_tag_block.count_tag
 
 
 def add_additional_tag_dict(additional_tag_dict: Dict[str, FixTag], tag_dict: Dict[str, FixTag]) -> None:
@@ -334,15 +454,15 @@ def determine_fix_version(str_fix_lines):
     return None
 
 
-def get_fix_tag_dict_for_lines(str_fix_lines):
+def get_fix_version_info_dict_for_lines(str_fix_lines) -> FixVersionInfo:
     version = determine_fix_version(str_fix_lines)
     assert version, "ERROR: can't extract FIX version from lines starting with line:{str_fix_lines[0]}"
-    fix_tag_dict = extract_tag_dict_for_fix_version(version)
+    fix_version_info = extract_info_for_fix_version(version)
 
-    return fix_tag_dict
+    return fix_version_info
 
 
-def parse_fix_line_into_kvs(line, fix_tag_dict):
+def get_kv_parts_from_line(line: str) -> Union[None, Tuple[List[str], str]]:
     match = re.search(VERSION_RE, line)
     if not match:
         return None
@@ -353,15 +473,76 @@ def parse_fix_line_into_kvs(line, fix_tag_dict):
 
     fix_line = line[fix_start:]
     kv_parts = fix_line.split(separator)
+
+    return kv_parts, separator
+
+
+def create_key_for_fix_tags(tag_id: str, block_start: FixBlock = None, block_count: int = 0,
+                            inner_block_start: FixBlock = None, inner_block_count: int = 0) -> str:
+    key = None
+    if block_start:
+        key = f'{block_start.count_tag:06} {block_count:02}'
+        if inner_block_start:
+            key = f'{key} {inner_block_start.count_tag:06} {inner_block_count:02}'
+    if key:
+        key = f'{key} {int(tag_id):06}'
+    else:
+        key = f'{int(tag_id):06}'
+
+    return key
+
+
+def parse_fix_line_into_kvs(line: str, fix_version_info: FixVersionInfo) -> Dict[str, str]:
+    kv_parts, separator = get_kv_parts_from_line(line)
+
     kvs = {}
+    fix_tags_by_tag_id = fix_version_info.fix_tags_by_tag_id
+    fix_blocks_by_count_tag = fix_version_info.fix_blocks_by_count_tag
+    current_block, current_inner_block = None, None
+    current_block_expected, current_inner_block_expected = 0, 0
+    current_block_count, current_inner_block_count = 0, 0
+    current_inner_tag_id = None  # used when we are done with a inner_block but still want to know what its tag_id was
     for kv_part in kv_parts:
         if kv_part:
             kv = re.search(r"^(\d+)=(.*)", kv_part)
             if kv:
                 tag_id, value = kv.group(1, 2)
-                if tag_id in fix_tag_dict and value in fix_tag_dict[tag_id].values:
-                    value = f"{value} ({fix_tag_dict[tag_id].values[value].name})"
-                kvs[tag_id] = value
+                if tag_id in fix_tags_by_tag_id and value in fix_tags_by_tag_id[tag_id].values:
+                    value = f"{value} ({fix_tags_by_tag_id[tag_id].values[value].name})"
+                if tag_id in fix_blocks_by_count_tag:
+                    if current_block:
+                        current_inner_block = fix_blocks_by_count_tag[tag_id]
+                        current_inner_block_count = 0
+                        current_inner_block_expected = int(value)
+                        current_inner_tag_id = tag_id
+                    else:
+                        current_block = fix_blocks_by_count_tag[tag_id]
+                        current_block_count = 0
+                        current_block_expected = int(value)
+
+                if current_block:
+                    if tag_id == current_block.start_tag:
+                        current_block_count += 1
+                    	current_inner_tag_id = None
+
+                    if current_inner_block and tag_id == current_inner_block.start_tag:
+                        current_inner_block_count += 1
+
+                    key = create_key_for_fix_tags(tag_id, current_block, current_block_count,
+                                                  current_inner_block, current_inner_block_count)
+
+                    # determine when the block and inner blocks ends
+                    if current_inner_block and current_inner_block.end_tag == tag_id \
+                            and current_inner_block_count == current_inner_block_expected:
+                        current_inner_block = None
+                    if current_inner_block == None:
+                        if current_block and current_block.end_tag == current_inner_tag_id \
+                                and current_block_count == current_block_expected:
+                            current_block = None
+                else:
+                    key = create_key_for_fix_tags(tag_id)
+
+                kvs[key] = value
             else:
                 print(f"ERROR: can't tokenize:'{kv_part}' into a key=value pair using separator:'{separator}'")
     #    print(f"{fix_line}:\n\t{kvs}")
@@ -394,11 +575,11 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
     if len(str_fix_lines):
         version = extract_version_from_first_fix_line(str_fix_lines)
         if version:
-            fix_tag_dict = extract_tag_dict_for_fix_version(version)
+            fix_version_info = extract_info_for_fix_version(version)
             used_fix_tags = {}
             fix_lines = []
             for line in str_fix_lines:
-                fix_tags = parse_fix_line_into_kvs(line.strip(), fix_tag_dict)
+                fix_tags = parse_fix_line_into_kvs(line.strip(), fix_version_info)
                 if fix_tags:
                     timestamp, error = extract_timestamp(line, fix_tags)
                     if timestamp:
@@ -408,7 +589,7 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
                     else:
                         print(error)
 
-            return fix_tag_dict, fix_lines, used_fix_tags, version
+            return fix_version_info.fix_tags_by_tag_id, fix_lines, used_fix_tags, version
 
     return {}, [], {}, None
 
@@ -426,11 +607,15 @@ def create_header_for_fix_lines(fix_lines: str, show_date: bool) -> List[str]:
     return headers
 
 
+# def tag_id_sorting(tag_id: str) -> str:
+#     if ' ' in tag_id:
+#
+
 def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
                           with_session_level_tags=True, top_header_tags=[],
                           show_date=False, transpose=False):
     rows = []
-    for fix_tag in (*top_header_tags, *sorted(used_fix_tags, key=lambda k: int(k))):
+    for fix_tag in (*top_header_tags, *sorted(used_fix_tags, key=lambda k: k)):
         if fix_tag in SESSION_LEVEL_TAGS and with_session_level_tags is False:
             continue
         if fix_tag in fix_tag_dict:
@@ -509,7 +694,19 @@ def convert_delta_into_hhmmssus(delta: timedelta) -> str:
 Cfg = configparser.ConfigParser()
 cfg_init()
 
+
+def display_fix_blocks():
+    for id, fix_block in FixBlock.fix_blocks_by_id.items():
+        print(f"id:{id}")
+        for position, fix_component in fix_block.components_by_position.items():
+            print(f"\t{position} -> {fix_component}")
+
+
 if __name__ == '__main__':
+    extract_fix_blocks_for_fix_version("4.4")
+    display_fix_blocks()
+    exit()
+
     all_versions = get_list_of_available_fix_versions()
     print("\n".join(all_versions))
     tag_dict = extract_tag_dict_for_fix_version("4.2")
