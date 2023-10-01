@@ -24,6 +24,7 @@ FIX_TAG_ID_SENDER_COMP_ID = "49"
 FIX_TAG_ID_TARGET_COMP_ID = "56"
 SESSION_LEVEL_TAGS = ['8', '34', '9', '10']
 VERSION_RE = r"8=FIXT*\.([.0-9SP]+)"
+START_OF_BLOCK_CHARACTER = '\u229F '
 
 # cfg key
 CFG_FILE_SECTION_MAIN = "main"
@@ -482,15 +483,17 @@ def get_kv_parts_from_line(line: str) -> Union[None, Tuple[List[str], str]]:
     return kv_parts, separator
 
 
+# The resulting key is to be used for both sorting and encoding of block/sub-block information
+# to be used later for formatting
 def encode_key_for_fix_tags(tag_id: str, block_start: FixBlock = None, block_count: int = 0,
                             inner_block_start: FixBlock = None, inner_block_count: int = 0) -> str:
     key = None
     if block_start:
         key = f'{int(block_start.count_tag):06} {block_count:02}'
         if inner_block_start:
-            key = f'{key} {int(inner_block_start.count_tag):06} {inner_block_count:02}'
+            key += f' {int(inner_block_start.count_tag):06} {inner_block_count:02}'
     if key:
-        key = f'{key} {int(tag_id):06}'
+        key += f' {int(tag_id):06}'
     else:
         key = f'{int(tag_id):06}'
 
@@ -504,18 +507,18 @@ def decode_key_for_fix_tags(key: str) -> Tuple[str, str]:
         block_count = int(elements[1])
         tag_id = elements[2].lstrip('0')
         if block_count == 0:
-            formatted_tag_id = '- ' + tag_id
+            formatted_tag_id = START_OF_BLOCK_CHARACTER + tag_id
         else:
-            formatted_tag_id = f"|-[{block_count}] {tag_id}"
+            formatted_tag_id = f"├─[{block_count}] {tag_id}"
         if len(elements) == 5:
             # key with inner-block information
             inner_block_count = int(elements[3])
             tag_id = elements[4].lstrip('0')
             if inner_block_count == 0:
-                formatted_tag_id = f"|-[{block_count}] - {tag_id}"
+                formatted_tag_id = f"├─[{block_count}] {START_OF_BLOCK_CHARACTER}{tag_id}"
             else:
                 padding_char = '\u00A0'
-                formatted_tag_id = f"|{padding_char*5}|-[{inner_block_count}] {tag_id}"
+                formatted_tag_id = f"{padding_char * 6}├─[{inner_block_count}] {tag_id}"
 
     else:
         tag_id = key.lstrip('0')

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
+from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lines_grid, \
+    DEFAULT_FIX_VERSION, FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID
+
 import argparse
 import fileinput
 
-from tabulate import tabulate, SEPARATING_LINE
-
-from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lines_grid, \
-    DEFAULT_FIX_VERSION, FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID
+import tabulate
+tabulate.PRESERVE_WHITESPACE = True
 
 
 def extract_fix_lines_from_files(files):
@@ -33,16 +34,16 @@ def main():
     cli_args = parse_args()
     files_to_parse = cli_args.fix_files
 
-    fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_files(files_to_parse)
+    fix_tag_dict, fix_lines, used_fix_tags, _ = extract_fix_lines_from_files(files_to_parse)
     if len(used_fix_tags) == 0:
         print("Could not find FIX lines.")
         exit(1)
 
     top_header_tags = [FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID]
     headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags, top_header_tags=top_header_tags)
-    rows.insert(len(top_header_tags), SEPARATING_LINE)
+    rows.insert(len(top_header_tags), tabulate.SEPARATING_LINE)
     tablefmt = cli_args.grid_style
-    print(tabulate(rows, headers=headers, stralign='left', tablefmt=tablefmt))
+    print(tabulate.tabulate(rows, headers=headers, stralign='left', tablefmt=tablefmt))
 
 
 if __name__ == '__main__':
