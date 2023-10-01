@@ -1,10 +1,11 @@
 import os
+import pdb
 from typing import List
 
 import pytest
 
 import fixations
-from fixations.fix_utils import extract_fix_lines_from_str_lines, extract_tag_dict_for_fix_version, \
+from fixations.fix_utils import extract_fix_lines_from_str_lines, extract_info_for_fix_version, \
     extract_version_from_first_fix_line, extract_timestamp, FIX_TAG_ID_SENDING_TIME, get_cfg_value, \
     CFG_FILE_KEY_FIX_DEFINITIONS_PATH, path_for_fix_version, get_list_of_available_fix_versions, \
     check_for_additional_fix_definitions, Additional_tag_cache, transpose_data_grid, get_timestamp_with_delta
@@ -64,7 +65,7 @@ def test_fix_versions_available():
 def test_match():
     VERSION_TO_TEST = '8.8'
     with pytest.raises(AssertionError, match=rf"The specified FIX version:{VERSION_TO_TEST} is not valid.*"):
-        extract_tag_dict_for_fix_version(VERSION_TO_TEST)
+        extract_info_for_fix_version(VERSION_TO_TEST)
 
 
 def test_extract_timestamp():
@@ -83,15 +84,15 @@ def test_extract_timestamp():
     assert tuple_equal(extract_timestamp("bogus line prefix 01:23:45,678 and junk 8=FIX.4"), ("01:23:45,678", None))
 
 
-def test_line_without_leading_tmestamp():
+def test_line_without_leading_timestamp():
     assert_lines_with_timestamp('')
 
 
-def test_line_with_leading_tmestamp():
+def test_line_with_leading_timestamp():
     assert_lines_with_timestamp('12:34:56.789')
 
 
-def assert_lines_with_timestamp(timestamp_prefix=None):
+def assert_lines_with_timestamp(timestamp_prefix):
     TAG52_TIMESTAMP = '20220215-14:30:01.870'
     if timestamp_prefix:
         timestamp = timestamp_prefix
@@ -102,11 +103,16 @@ def assert_lines_with_timestamp(timestamp_prefix=None):
         f"{timestamp_prefix} 8=FIX.4.2 | 9=0192 | 35=D | 34=000006393 | 52={TAG52_TIMESTAMP} | 49=MY_SCID | 56=MY_TCID | " +
         "44=88.7300 | 114=N | 55=GOOG | 8002=0 | 110=1000 | 10=042"]
     _, fix_lines, used_fix_tags, _ = extract_fix_lines_from_str_lines(lines)
-    assert fix_lines == [(timestamp, {'8': 'FIX.4.2',
+
+    # remove FIX tag's 0-padding
+    non_padded_fix_lines = [(timestamp, {k.lstrip('0'): v for k, v in fix_lines[0][1].items()})]
+    non_padded_used_fix_tags = {k.lstrip('0'): v for k, v in used_fix_tags.items()}
+
+    assert non_padded_fix_lines == [(timestamp, {'8': 'FIX.4.2',
                                       '9': '0192',
                                       '35': 'D (NewOrderSingle)',
                                       '34': '000006393',
-                                      '52': '20220215-14:30:01.870',
+                                      '52': TAG52_TIMESTAMP,
                                       '49': 'MY_SCID',
                                       '56': 'MY_TCID',
                                       '44': '88.7300',
@@ -115,7 +121,7 @@ def assert_lines_with_timestamp(timestamp_prefix=None):
                                       '8002': '0',
                                       '110': '1000',
                                       '10': '042'})]
-    assert used_fix_tags == {'8': 1,
+    assert non_padded_used_fix_tags == {'8': 1,
                              '9': 1,
                              '35': 1,
                              '34': 1,
