@@ -129,6 +129,8 @@ window.onload = function(){
     Array.from(fix_tag_ids).forEach(function (fix_tag_id) {
        fix_tag_id.addEventListener('click', function (event) {
           var tag_num = event.target.textContent;
+          last_digits = tag_num.match(/\d+$/);
+          tag_num = last_digits[0]
           var lookup_url = `{{ lookup_url_template }}`;
           window.open(lookup_url, '_blank');
        });

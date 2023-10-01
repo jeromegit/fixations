@@ -514,7 +514,8 @@ def decode_key_for_fix_tags(key: str) -> Tuple[str, str]:
             if inner_block_count == 0:
                 formatted_tag_id = f"|-[{block_count}] - {tag_id}"
             else:
-                formatted_tag_id = f"|     |-[{inner_block_count}] {tag_id}"
+                padding_char = '\u00A0'
+                formatted_tag_id = f"|{padding_char*5}|-[{inner_block_count}] {tag_id}"
 
     else:
         tag_id = key.lstrip('0')
