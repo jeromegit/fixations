@@ -82,8 +82,8 @@ class FixBlock:
     name: str
     count_tag: str  # to be used as block's common tag
     start_tag: str  # to be used as start of block
-    end_tag: str  # to be used as end of block
     components_by_position: Dict[int, FixComponent] = field(default_factory=dict)
+    tag_ids: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -401,22 +401,27 @@ def extract_fix_blocks_for_fix_version(fix_version_info: FixVersionInfo) -> None
             fix_block = fix_version_info.fix_blocks_by_id[block_id]
             fix_component = FixComponent(block_id, tag, indent, position)
             fix_block.components_by_position[position] = fix_component
+            fix_block.tag_ids.add(tag)
 
             if position == '1':
                 fix_block.count_tag = tag
                 fix_version_info.fix_blocks_by_count_tag[tag] = fix_block
             elif position == '2':
                 fix_block.start_tag = tag
-            fix_block.end_tag = tag
 
-    convert_end_tags_as_name_to_fix_tags(fix_version_info)
+    convert_tag_ids_as_name_to_fix_tags(fix_version_info)
 
 
-def convert_end_tags_as_name_to_fix_tags(fix_version_info: FixVersionInfo) -> None:
+def convert_tag_ids_as_name_to_fix_tags(fix_version_info: FixVersionInfo) -> None:
     for block in fix_version_info.fix_blocks_by_id.values():
-        eng_tag_block = fix_version_info.fix_blocks_by_name.get(block.end_tag, None)
-        if eng_tag_block:
-            block.end_tag = eng_tag_block.count_tag
+        new_tag_ids = set()
+        for tag_id in block.tag_ids:
+            tag_block = fix_version_info.fix_blocks_by_name.get(tag_id, None)
+            if tag_block:
+                new_tag_ids.add(tag_block.count_tag)
+            else:
+                new_tag_ids.add(tag_id)
+        block.tag_ids = new_tag_ids
 
 
 def add_additional_tag_dict(additional_tag_dict: Dict[str, FixTag], tag_dict: Dict[str, FixTag]) -> None:
@@ -477,19 +482,45 @@ def get_kv_parts_from_line(line: str) -> Union[None, Tuple[List[str], str]]:
     return kv_parts, separator
 
 
-def create_key_for_fix_tags(tag_id: str, block_start: FixBlock = None, block_count: int = 0,
+def encode_key_for_fix_tags(tag_id: str, block_start: FixBlock = None, block_count: int = 0,
                             inner_block_start: FixBlock = None, inner_block_count: int = 0) -> str:
     key = None
     if block_start:
-        key = f'{block_start.count_tag:06} {block_count:02}'
+        key = f'{int(block_start.count_tag):06} {block_count:02}'
         if inner_block_start:
-            key = f'{key} {inner_block_start.count_tag:06} {inner_block_count:02}'
+            key = f'{key} {int(inner_block_start.count_tag):06} {inner_block_count:02}'
     if key:
         key = f'{key} {int(tag_id):06}'
     else:
         key = f'{int(tag_id):06}'
 
     return key
+
+
+def decode_key_for_fix_tags(key: str) -> Tuple[str, str]:
+    if ' ' in key:
+        # key with block information
+        elements = key.split(' ')
+        block_count = int(elements[1])
+        tag_id = elements[2].lstrip('0')
+        if block_count == 0:
+            formatted_tag_id = '- ' + tag_id
+        else:
+            formatted_tag_id = f"|-[{block_count}] {tag_id}"
+        if len(elements) == 5:
+            # key with inner-block information
+            inner_block_count = int(elements[3])
+            tag_id = elements[4].lstrip('0')
+            if inner_block_count == 0:
+                formatted_tag_id = f"|-[{block_count}] - {tag_id}"
+            else:
+                formatted_tag_id = f"|     |-[{inner_block_count}] {tag_id}"
+
+    else:
+        tag_id = key.lstrip('0')
+        formatted_tag_id = tag_id
+    # formatted_tag_id += f" ({key})"
+    return tag_id, formatted_tag_id
 
 
 def parse_fix_line_into_kvs(line: str, fix_version_info: FixVersionInfo) -> Dict[str, str]:
@@ -499,9 +530,7 @@ def parse_fix_line_into_kvs(line: str, fix_version_info: FixVersionInfo) -> Dict
     fix_tags_by_tag_id = fix_version_info.fix_tags_by_tag_id
     fix_blocks_by_count_tag = fix_version_info.fix_blocks_by_count_tag
     current_block, current_inner_block = None, None
-    current_block_expected, current_inner_block_expected = 0, 0
     current_block_count, current_inner_block_count = 0, 0
-    current_inner_tag_id = None  # used when we are done with a inner_block but still want to know what its tag_id was
     for kv_part in kv_parts:
         if kv_part:
             kv = re.search(r"^(\d+)=(.*)", kv_part)
@@ -509,38 +538,38 @@ def parse_fix_line_into_kvs(line: str, fix_version_info: FixVersionInfo) -> Dict
                 tag_id, value = kv.group(1, 2)
                 if tag_id in fix_tags_by_tag_id and value in fix_tags_by_tag_id[tag_id].values:
                     value = f"{value} ({fix_tags_by_tag_id[tag_id].values[value].name})"
+
+                # it's hard to determine when a block (or inner block) is done until we reach the next unrelated tag
+                if current_inner_block and tag_id not in current_inner_block.tag_ids:
+                    current_inner_block = None
+                if not current_inner_block and current_block and tag_id not in current_block.tag_ids:
+                    current_block = None
+
                 if tag_id in fix_blocks_by_count_tag:
+                    # starts of a block or inner block
                     if current_block:
-                        current_inner_block = fix_blocks_by_count_tag[tag_id]
-                        current_inner_block_count = 0
-                        current_inner_block_expected = int(value)
-                        current_inner_tag_id = tag_id
+                        if tag_id in current_block.tag_ids:
+                            current_inner_block = fix_blocks_by_count_tag[tag_id]
+                            current_inner_block_count = 0
+                        else:
+                            current_block = fix_blocks_by_count_tag[tag_id]
+                            current_block_count = 0
                     else:
                         current_block = fix_blocks_by_count_tag[tag_id]
                         current_block_count = 0
-                        current_block_expected = int(value)
 
                 if current_block:
                     if tag_id == current_block.start_tag:
                         current_block_count += 1
-                    	current_inner_tag_id = None
 
                     if current_inner_block and tag_id == current_inner_block.start_tag:
                         current_inner_block_count += 1
 
-                    key = create_key_for_fix_tags(tag_id, current_block, current_block_count,
+                    key = encode_key_for_fix_tags(tag_id, current_block, current_block_count,
                                                   current_inner_block, current_inner_block_count)
 
-                    # determine when the block and inner blocks ends
-                    if current_inner_block and current_inner_block.end_tag == tag_id \
-                            and current_inner_block_count == current_inner_block_expected:
-                        current_inner_block = None
-                    if current_inner_block == None:
-                        if current_block and current_block.end_tag == current_inner_tag_id \
-                                and current_block_count == current_block_expected:
-                            current_block = None
                 else:
-                    key = create_key_for_fix_tags(tag_id)
+                    key = encode_key_for_fix_tags(tag_id)
 
                 kvs[key] = value
             else:
@@ -615,16 +644,17 @@ def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
                           with_session_level_tags=True, top_header_tags=[],
                           show_date=False, transpose=False):
     rows = []
-    for fix_tag in (*top_header_tags, *sorted(used_fix_tags, key=lambda k: k)):
+    for key in (*top_header_tags, *sorted(used_fix_tags)):
+        fix_tag, formatted_fix_tag = decode_key_for_fix_tags(key)
         if fix_tag in SESSION_LEVEL_TAGS and with_session_level_tags is False:
             continue
         if fix_tag in fix_tag_dict:
             fix_tag_name = fix_tag_dict[fix_tag].name
         else:
             fix_tag_name = '???'
-        cols = [fix_tag, fix_tag_name]
+        cols = [formatted_fix_tag, fix_tag_name]
         for (timestamp, fix_tags) in fix_lines:
-            value = fix_tags[fix_tag] if fix_tag in fix_tags else ''
+            value = fix_tags[key] if key in fix_tags else ''
             if 'time' in fix_tag_name.lower() and show_date is False:
                 value = remove_date_from_datetime(value)
             cols.append(value)
