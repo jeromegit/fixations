@@ -40,8 +40,11 @@ def home():
 
 
 def get_fix_lines_list(req):
+    obfuscate_tags_str = req.args.get('obfuscate_tags', None)
+    obfuscate_tags = create_obfuscate_tag_set(obfuscate_tags_str)
+
     str_id = req.args.get('id')
-    if str_id:
+    if str_id and not obfuscate_tags:
         fix_lines_str, _ = store.get(str_id)
         if fix_lines_str is None:
             fix_lines_str = f"There's no record for id:{str_id}!"
@@ -51,8 +54,6 @@ def get_fix_lines_list(req):
         fix_lines_param = req.args.get('fix_lines', '')
         fix_lines_list = fix_lines_param.splitlines()
         if len(fix_lines_list) > 0:
-            obfuscate_tags_str = req.args.get('obfuscate_tags', None)
-            obfuscate_tags = create_obfuscate_tag_set(obfuscate_tags_str)
             if len(obfuscate_tags):
                 fix_lines_list = obfuscate_lines(fix_lines_list, obfuscate_tags)
             fix_lines_str = '\n'.join(fix_lines_list)
