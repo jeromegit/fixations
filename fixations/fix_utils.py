@@ -468,7 +468,7 @@ def get_fix_version_info_dict_for_lines(str_fix_lines) -> FixVersionInfo:
     return fix_version_info
 
 
-def get_kv_parts_from_line(line: str) -> Union[None, Tuple[List[str], str]]:
+def get_kv_parts_from_line(line: str) -> Union[None, Tuple[str, List[str], str]]:
     match = re.search(VERSION_RE, line)
     if not match:
         return None
@@ -477,10 +477,11 @@ def get_kv_parts_from_line(line: str) -> Union[None, Tuple[List[str], str]]:
     body_length_start = line.find('9=')
     separator = line[fix_end:body_length_start]
 
+    line_prefix = line[:fix_start]
     fix_line = line[fix_start:]
     kv_parts = fix_line.split(separator)
 
-    return kv_parts, separator
+    return line_prefix, kv_parts, separator
 
 
 # The resulting key is to be used for both sorting and encoding of block/sub-block information
@@ -528,7 +529,7 @@ def decode_key_for_fix_tags(key: str) -> Tuple[str, str]:
 
 
 def parse_fix_line_into_kvs(line: str, fix_version_info: FixVersionInfo) -> Dict[str, str]:
-    kv_parts, separator = get_kv_parts_from_line(line)
+    _, kv_parts, separator = get_kv_parts_from_line(line)
 
     kvs = {}
     fix_tags_by_tag_id = fix_version_info.fix_tags_by_tag_id
@@ -604,7 +605,7 @@ def extract_timestamp(line, fix_tags=None):
             return None, error
 
 
-def extract_fix_lines_from_str_lines(str_fix_lines):
+def extract_fix_lines_from_str_lines(str_fix_lines: str):
     if len(str_fix_lines):
         version = extract_version_from_first_fix_line(str_fix_lines)
         if version:
@@ -625,6 +626,42 @@ def extract_fix_lines_from_str_lines(str_fix_lines):
             return fix_version_info.fix_tags_by_tag_id, fix_lines, used_fix_tags, version
 
     return {}, [], {}, None
+
+
+def create_obfuscate_tag_set(obfuscate_tags_str: str) -> Set[int]:
+    if obfuscate_tags_str and len(obfuscate_tags_str):
+        obfuscate_tag_set = set(obfuscate_tags_str.split())
+    else:
+        obfuscate_tag_set = set()
+
+    return obfuscate_tag_set
+
+
+def obfuscate_lines(lines: List[str], obfuscate_tags: set[str]) -> List[str]:
+    obfuscate_lines = list()
+    for line in lines:
+        obfuscate_lines.append(obfuscate_tag_values_in_line(line, obfuscate_tags))
+
+    return obfuscate_lines
+
+
+def obfuscate_tag_values_in_line(line: str, obfuscate_tags: set[str]) -> None:
+    line_prefix, kv_parts, separator = get_kv_parts_from_line(line)
+
+    obfuscated_kvs: List = list()
+    for kv_part in kv_parts:
+        if kv_part:
+            kv = re.search(r"^(\d+)=(.*)", kv_part)
+            if kv:
+                tag_id, value = kv.group(1, 2)
+                if tag_id in obfuscate_tags:
+                    obfuscated_value = '*' * len(value)
+                    kv_part = '='.join((tag_id, obfuscated_value))
+        obfuscated_kvs.append(kv_part)
+
+    obfuscated_line = line_prefix + separator.join(obfuscated_kvs)
+
+    return obfuscated_line
 
 
 def create_header_for_fix_lines(fix_lines: str, show_date: bool) -> List[str]:

@@ -47,7 +47,7 @@ tr:hover {
 }
 
 </style>
-
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
 <script>
 var fix_lines_elt, count_elt;
 
@@ -68,11 +68,64 @@ function update_count() {
     }
 }
 
+
+// --------- Obfuscate tags --------
+const DEFAULT_OBFUSCATE_TAGS = "49 50 56 57 115 116";
+const OBFUSCATE_CHECK_BOX_NAME = "obfuscate"
+const OBFUSCATE_TAGS_TEXT_NAME = "obfuscate_tags"
+
+function init_option_obfuscate() {
+    if (Cookies.get(OBFUSCATE_CHECK_BOX_NAME) == 'true') {
+    	document.getElementById(OBFUSCATE_CHECK_BOX_NAME).checked = true;
+    }
+	set_obfuscate_tags();
+}
+
+function set_obfuscate_checkbox() {
+    obfuscate_checkbox = document.getElementById(OBFUSCATE_CHECK_BOX_NAME);
+	Cookies.set(OBFUSCATE_CHECK_BOX_NAME, obfuscate_checkbox.checked ? 'true' : false,
+		{ expires: 999, sameSite:'Strict' });
+}
+
+function set_obfuscate_tags() {
+    obfuscate_tags = document.getElementById(OBFUSCATE_TAGS_TEXT_NAME);
+
+  	obfuscate_checkbox = document.getElementById(OBFUSCATE_CHECK_BOX_NAME);
+	checked = obfuscate_checkbox.checked;
+
+    tags = document.getElementById(OBFUSCATE_TAGS_TEXT_NAME).value
+    if (tags == "") {
+        tags = Cookies.get(OBFUSCATE_TAGS_TEXT_NAME)
+        if (tags === undefined || tags == "") {
+            obfuscate_tags.value = DEFAULT_OBFUSCATE_TAGS;
+        } else {
+            obfuscate_tags.value = tags;
+        }
+    }
+    Cookies.set(OBFUSCATE_TAGS_TEXT_NAME, tags, { expires: 999, sameSite: 'Strict'});
+
+	obfuscate_tags.readonly = ! checked;
+	obfuscate_tags.disabled = ! checked;
+}
+
+function on_submit() {
+	set_obfuscate_checkbox();
+    set_obfuscate_tags();
+}
+
 window.onload = function(){
     fix_lines_elt = document.getElementById("fix_lines");
     count_elt = document.getElementById("count");
     id_elt = document.getElementById("id");
     form_elt = document.getElementById("fix_form_submit");
+
+	// Obfuscate FIX tags
+	init_option_obfuscate();
+    const obfuscate_checkbox = document.getElementById(OBFUSCATE_CHECK_BOX_NAME);
+    obfuscate_checkbox.addEventListener('change', function() {
+		set_obfuscate_checkbox();
+        set_obfuscate_tags();
+    });
 
     fix_lines_elt.addEventListener('input', function (e) {
         update_count();
@@ -142,13 +195,17 @@ window.onload = function(){
 </head>
 <body>
 <h4>Paste FIX log lines below</h4>
-<form action="{{ url_for('home') }}" method="get">
+<form action="{{ url_for('home') }}" onsubmit="on_submit()" method="get">
     <textarea id="fix_lines" name="fix_lines" rows="10" maxlength="{{ max_count }}"
               onchange="document.getElementById('id').value = ''"></textarea>
     <input type="hidden" id="id" name="id" value="{{ str_id }}">
     <div><span id="count">0</span><span id="max_count"> / {{ max_count }}</span></div>
     <input type="checkbox" id="show_date" name="show_date" value="true" {{ "checked" if show_date else "" }}><label for="show_date"> Show date</label>
     <input type="checkbox" id="transpose" name="transpose" value="true" {{ "checked" if transpose else "" }}><label for="transpose"> Transpose data table</label>
+
+    <input type="checkbox" id="obfuscate" name="obfuscate" value="true"><label for="obfuscate"> Obfuscate these tags</label>
+    <input type="text" id="obfuscate_tags" name="obfuscate_tags" value="">
+
     <br>
     <input type="button" value="Clear" title="Ctrl-L to clear"
            onclick="clear_fix_lines()"/>
