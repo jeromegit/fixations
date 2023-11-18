@@ -136,6 +136,16 @@ def assert_lines_with_timestamp(timestamp_prefix):
                              '10': 1}
 
 
+def test_dont_choke_on_emptyish_lines():
+    lines = [
+        "20220215-14:30:01.870 8=FIX.4.2 | 9=0192 | 35=D | 34=000006393| 49=MY_SCID | 56=MY_TCID | " +
+        "44=88.7300 | 114=N | 55=GOOG | 8002=0 | 110=1000 | 10=042",
+        None,
+        "",  # test empty line
+        " \t ",  # test with tab and spaces
+    ]
+    extract_fix_lines_from_str_lines(lines)
+
 def test_additional_fixtags_with_bogus_urls_and_no_exception_was_raised():
     check_for_additional_fix_definitions('file://bogus/path.txt')
     check_for_additional_fix_definitions('https://bogus.com/path.txt')
@@ -197,10 +207,12 @@ def test_get_timestamp_with_delta():
     assert get_timestamp_with_delta("12:34:57.222", "12:34:56.111") == "12:34:57.222\n(+1.111)"
     assert get_timestamp_with_delta("12:34:57.222001", "12:34:56.111001") == "12:34:57.222001\n(+1.111)"
     assert get_timestamp_with_delta("12:34:56.123457", "12:34:56.000001") == "12:34:56.123457\n(+.123456)"
-    assert get_timestamp_with_delta("23:59:59.999999", "00:00:00") == "23:59:59.999999\n(+23:59:59.999999)"
-    assert get_timestamp_with_delta("23:59:59.999999", "00:00:00.000") == "23:59:59.999999\n(+23:59:59.999999)"
-    assert get_timestamp_with_delta("23:59:59.999999", "00:00:00.000000") == "23:59:59.999999\n(+23:59:59.999999)"
-    assert get_timestamp_with_delta("23:59:59.999999", "00:00:00.000001") == "23:59:59.999999\n(+23:59:59.999998)"
+    last_us = "23:59:59.999999"
+    last_us_with_delta = f"{last_us}\n(+{last_us})"
+    assert get_timestamp_with_delta(last_us, "00:00:00") == last_us_with_delta
+    assert get_timestamp_with_delta(last_us, "00:00:00.000") == last_us_with_delta
+    assert get_timestamp_with_delta(last_us, "00:00:00.000000") == last_us_with_delta
+    assert get_timestamp_with_delta(last_us, "00:00:00.000001") == "23:59:59.999999\n(+23:59:59.999998)"
 
     # Bad format
     assert get_timestamp_with_delta("12:34:57.",
@@ -219,8 +231,8 @@ def test_tuple_equal():
 
 
 def tuple_equal(expected, actual):
-    if type(expected) == tuple and \
-            type(actual) == tuple and \
+    if isinstance(expected, tuple) and \
+            isinstance(actual, tuple) and \
             len(expected) == len(actual):
         for i in range(0, len(expected)):
             if expected[i] != actual[i]:

@@ -432,7 +432,7 @@ def add_additional_tag_dict(additional_tag_dict: Dict[str, FixTag], tag_dict: Di
 
 
 def tag_dict_to_json(tag_dict_):
-    dict_of_objects = {k: (v.to_json() if type(v) == FixTag else v) for k, v in tag_dict_.items()}
+    dict_of_objects = {k: (v.to_json() if isinstance(v, FixTag) else v) for k, v in tag_dict_.items()}
     json_object = json.dumps(dict_of_objects, indent=3)
     return json_object
 
@@ -494,11 +494,15 @@ def encode_key_for_fix_tags(tag_id: str, block_start: FixBlock = None, block_cou
         if inner_block_start:
             key += f' {int(inner_block_start.count_tag):06} {inner_block_count:02}'
     if key:
-        key += f' {int(tag_id):06}'
+        key += ' ' + simple_tag_id_encoding(tag_id)
     else:
-        key = f'{int(tag_id):06}'
+        key = simple_tag_id_encoding(tag_id)
 
     return key
+
+
+def simple_tag_id_encoding(tag_id: str) -> str:
+    return f'{int(tag_id):06}'
 
 
 def decode_key_for_fix_tags(key: str) -> Tuple[str, str]:
@@ -524,7 +528,7 @@ def decode_key_for_fix_tags(key: str) -> Tuple[str, str]:
     else:
         tag_id = key.lstrip('0')
         formatted_tag_id = tag_id
-    # formatted_tag_id += f" ({key})"
+
     return tag_id, formatted_tag_id
 
 
@@ -592,20 +596,33 @@ def extract_version_from_first_fix_line(str_fix_lines):
     return None
 
 
+def get_fix_tag_value_from_fix_tags(tag_id: str, fix_tags: dict[str, str]) -> Union[str, None]:
+    if fix_tags:
+        if tag_id in fix_tags:
+            return fix_tags[tag_id]
+
+        encoded_tag_id = simple_tag_id_encoding(tag_id)
+        if encoded_tag_id in fix_tags:
+            return fix_tags[encoded_tag_id]
+
+    return None
+
+
 def extract_timestamp(line, fix_tags=None):
     # assume that the there's a timestamp before the beginning of the FIX k/v tags
     match = re.search(r"(\d*\d:\d\d:\d\d[,.0-9]*).*8=FIXT*\.\d+", line)
     if match:
         return match.group(1), None
     else:
-        if fix_tags and FIX_TAG_ID_SENDING_TIME in fix_tags:
-            return fix_tags[FIX_TAG_ID_SENDING_TIME], None
+        timestamp = get_fix_tag_value_from_fix_tags(FIX_TAG_ID_SENDING_TIME, fix_tags)
+        if timestamp:
+            return timestamp, None
         else:
             error = f"ERROR: FIX line w/o timestamp and SENDING_TIME tag{FIX_TAG_ID_SENDING_TIME}: {line}"
             return None, error
 
 
-def extract_fix_lines_from_str_lines(str_fix_lines: str):
+def extract_fix_lines_from_str_lines(str_fix_lines:List[str]):
     if len(str_fix_lines):
         version = extract_version_from_first_fix_line(str_fix_lines)
         if version:
@@ -613,15 +630,16 @@ def extract_fix_lines_from_str_lines(str_fix_lines: str):
             used_fix_tags = {}
             fix_lines = []
             for line in str_fix_lines:
-                fix_tags = parse_fix_line_into_kvs(line.strip(), fix_version_info)
-                if fix_tags:
-                    timestamp, error = extract_timestamp(line, fix_tags)
-                    if timestamp:
-                        for fix_tag_key in fix_tags.keys():
-                            used_fix_tags[fix_tag_key] = 1
-                        fix_lines.append((timestamp, fix_tags))
-                    else:
-                        print(error)
+                if line is not None and len(line) > 0 and not line.isspace():
+                    fix_tags = parse_fix_line_into_kvs(line.strip(), fix_version_info)
+                    if fix_tags:
+                        timestamp, error = extract_timestamp(line, fix_tags)
+                        if timestamp:
+                            for fix_tag_key in fix_tags.keys():
+                                used_fix_tags[fix_tag_key] = 1
+                            fix_lines.append((timestamp, fix_tags))
+                        else:
+                            print(error)
 
             return fix_version_info.fix_tags_by_tag_id, fix_lines, used_fix_tags, version
 
