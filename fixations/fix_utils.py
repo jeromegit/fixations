@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import cache
 from string import Template
-from typing import Dict, Union, List, ClassVar, Tuple, Set
+from typing import Dict, Union, List, Tuple, Set
 from xml.dom.minicompat import NodeList
 from xml.dom.minidom import parse
 

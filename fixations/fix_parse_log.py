@@ -25,6 +25,8 @@ def extract_lines_from_files(files: List[str]) -> List[str]:
 
 def upload_lines(lines: List[str]) -> None:
     upload_url = get_cfg_value(CFG_UPLOAD_URL)
+    assert upload_url, f"The configuration key:{CFG_UPLOAD_URL} must be specified to be able to use the -u option"
+
     try:
         response = requests.head(upload_url)
     except requests.exceptions.ConnectionError:
