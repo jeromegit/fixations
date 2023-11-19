@@ -11,12 +11,20 @@ app = Flask(__name__)
 
 TEXT_AREA_MAX_COUNT = 8092  # this is mandated by gunicorn
 
+FORM_ID = 'id'
+FORM_FIX_LINES = 'fix_lines'
+FORM_UPLOAD = 'upload'
+
 store = Store(get_store_path())
 
 
 @app.route("/")
 def home():
     fix_lines_list, id_str, char_count = get_fix_lines_list(request)
+    if request.args.get(FORM_UPLOAD, False):
+        uploaded_url = f"{request.base_url}?{FORM_ID}={id_str}"
+        return uploaded_url
+
     show_date = True if request.args.get('show_date', False) else False
     transpose = True if request.args.get('transpose', False) else False
 
@@ -43,7 +51,7 @@ def get_fix_lines_list(req):
     obfuscate_tags_str = req.args.get('obfuscate_tags', None)
     obfuscate_tags = create_obfuscate_tag_set(obfuscate_tags_str)
 
-    str_id = req.args.get('id')
+    str_id = req.args.get(FORM_ID)
     if str_id and not obfuscate_tags:
         fix_lines_str, _ = store.get(str_id)
         if fix_lines_str is None:
@@ -51,7 +59,7 @@ def get_fix_lines_list(req):
         fix_lines_list = fix_lines_str.splitlines()
         char_count = len(fix_lines_str)
     else:
-        fix_lines_param = req.args.get('fix_lines', '')
+        fix_lines_param = req.args.get(FORM_FIX_LINES, '')
         fix_lines_list = fix_lines_param.splitlines()
         if len(fix_lines_list) > 0:
             if len(obfuscate_tags):

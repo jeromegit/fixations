@@ -35,6 +35,7 @@ CFG_FILE_KEY_STORE_PATH = "store_path"
 CFG_FILE_KEY_LOOKUP_URL_TEMPLATE = "lookup_url_template"
 CFG_ADDITIONAL_FIX_DEFINITIONS_URL = "additional_fix_definition_url"
 CFG_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH = "additional_fix_definition_path"
+CFG_UPLOAD_URL = "upload_url"
 
 # cfg / default values
 DEFAULT_CFG_FILE_PATH = os.environ["HOME"] + "/.fixations.ini"
