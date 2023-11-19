@@ -51,7 +51,7 @@ NOTE: it requires the creation of a login/password to access it.
  1. create a hyperlink to FIX specs for each tag based on FIX version :white_check_mark:
  2. add more info to README.md. Use rule80A and 47 as example for fix_args :white_check_mark:
  3. add more example(s)
- 4. add some pytest to detect the FIX version for example
+ 4. add some pytest to detect the FIX version for example :white_check_mark:
  5. add "direction" to columns to show whether it's a request or a response
  6. catch exceptions and display them on the webpage
  7. deploy to https://vercel.com/
@@ -62,9 +62,9 @@ NOTE: it requires the creation of a login/password to access it.
  12. add proper Logger
  13. add DB stats
  14. pypi.org can't display the ASCII screencast images. Need to reference GitHub's full path?
- 15. Give the option to remove or hide/obfuscate some sensitive fields such as tag55 or senderCompId/targetComPid
- 16. Show the delta between each timestamp (below each timestamp)
- 17. Transpose the grid/matrix
- 18. Shift-Enter = pressing on [Parse FIX] button
+ 15. Give the option to remove or hide/obfuscate some sensitive fields such as tag55 or senderCompId/targetComPid :white_check_mark:
+ 16. Show the delta between each timestamp (below each timestamp) :white_check_mark:
+ 17. Transpose the grid/matrix :white_check_mark:
+ 18. Shift-Enter = pressing on [Parse FIX] button :white_check_mark:
 
 
