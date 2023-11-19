@@ -66,5 +66,7 @@ NOTE: it requires the creation of a login/password to access it.
  16. Show the delta between each timestamp (below each timestamp) :white_check_mark:
  17. Transpose the grid/matrix :white_check_mark:
  18. Shift-Enter = pressing on [Parse FIX] button :white_check_mark:
+ 19. Support FIX Repeating Groups :white_check_mark:
+ 20. When using fix_parse_log.py, also upload the same data to the webfix app to generate a tiny URL :white_check_mark: 
 
 
