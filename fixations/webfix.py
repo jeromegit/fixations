@@ -39,7 +39,7 @@ def home():
                'show_date': show_date,
                'transpose': transpose,
                'max_count': TEXT_AREA_MAX_COUNT,
-               'fix_lines_list': fix_lines_list,
+               'fix_lines_list': [line.replace('"', '\\"') for line in fix_lines_list],  # Escape "
                'str_id': id_str,
                'lookup_url_template': lookup_url_template_for_js,
                'size': f"{len(fix_lines)} lines / {char_count} chars"
