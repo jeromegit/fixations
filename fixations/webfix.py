@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+import urllib.parse
+
 from flask import Flask, render_template
 from flask import request
 
 from fixations.fix_store import Store
 from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lines_grid, get_store_path, \
-    get_lookup_url_template_for_js, create_obfuscate_tag_set, obfuscate_lines
+    get_lookup_url_template_for_js, create_obfuscate_tag_set, obfuscate_lines, create_table_from_fix_lines
 from fixations.short_str_id import get_short_str_id
 
 app = Flask(__name__)
@@ -18,11 +20,27 @@ FORM_UPLOAD = 'upload'
 store = Store(get_store_path())
 
 
+@app.route('/stdin', methods=['POST'])
+def receive_data():
+    data = request.get_data().decode()
+    data = urllib.parse.unquote_plus(data)
+    fix_lines = data.splitlines()
+
+    table = create_table_from_fix_lines(fix_lines)
+    if not table:
+        return "Could not find FIX lines!"
+
+    str_id = store_fix_lines(data)
+    url = get_url_for_str_id(str_id)
+
+    return f"{table}\n{url}\n"
+
+
 @app.route("/")
 def home():
     fix_lines_list, id_str, char_count = get_fix_lines_list(request)
     if request.args.get(FORM_UPLOAD, False):
-        uploaded_url = f"{request.base_url}?{FORM_ID}={id_str}"
+        uploaded_url = get_url_for_str_id(id_str)
         return uploaded_url
 
     show_date = True if request.args.get('show_date', False) else False
@@ -66,12 +84,24 @@ def get_fix_lines_list(req):
                 fix_lines_list = obfuscate_lines(fix_lines_list, obfuscate_tags)
             fix_lines_str = '\n'.join(fix_lines_list)
             char_count = len(fix_lines_str)
-            str_id = get_short_str_id(fix_lines_str, length=8)
-            store.save(str_id, fix_lines_str)
+            str_id = store_fix_lines(fix_lines_str)
         else:
             char_count = 0
 
     return fix_lines_list, str_id, char_count
+
+
+def store_fix_lines(fix_lines_str: str) -> str:
+    str_id = get_short_str_id(fix_lines_str, length=8)
+    store.save(str_id, fix_lines_str)
+
+    return str_id
+
+
+def get_url_for_str_id(id_str: str) -> str:
+    url = f"{request.host_url}?{FORM_ID}={id_str}"
+
+    return url
 
 
 def main():

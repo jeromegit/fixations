@@ -16,6 +16,7 @@ from xml.dom.minicompat import NodeList
 from xml.dom.minidom import parse
 
 import requests as requests
+import tabulate
 from dataclasses_json import dataclass_json
 
 DEFAULT_FIX_VERSION = "4.2"
@@ -623,7 +624,7 @@ def extract_timestamp(line, fix_tags=None):
             return None, error
 
 
-def extract_fix_lines_from_str_lines(str_fix_lines:List[str]):
+def extract_fix_lines_from_str_lines(str_fix_lines: List[str]):
     if len(str_fix_lines):
         version = extract_version_from_first_fix_line(str_fix_lines)
         if version:
@@ -780,17 +781,31 @@ def convert_delta_into_hhmmssus(delta: timedelta) -> str:
     return sign + delta_in_hhmmssus
 
 
-# -- Configuration --------
-Cfg = configparser.ConfigParser()
-cfg_init()
-
-
 def display_fix_blocks():
     for id, fix_block in FixBlock.fix_blocks_by_id.items():
         print(f"id:{id}")
         for position, fix_component in fix_block.components_by_position.items():
             print(f"\t{position} -> {fix_component}")
 
+
+def create_table_from_fix_lines(fix_lines: List[str], grid_style: str = 'psql') -> str:
+    fix_tag_dict, fix_lines, used_fix_tags, _ = extract_fix_lines_from_str_lines(fix_lines)
+    if len(used_fix_tags) == 0:
+        print("Could not find FIX lines.")
+        exit(1)
+
+    top_header_tags = [FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID]
+    headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags, top_header_tags=top_header_tags)
+    rows.insert(len(top_header_tags), tabulate.SEPARATING_LINE)
+
+    table = tabulate.tabulate(rows, headers=headers, stralign='left', tablefmt=grid_style)
+
+    return table
+
+
+# -- Configuration --------
+Cfg = configparser.ConfigParser()
+cfg_init()
 
 if __name__ == '__main__':
     extract_fix_blocks_for_fix_version("4.4")
