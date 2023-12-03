@@ -704,6 +704,8 @@ def create_header_for_fix_lines(fix_lines: str, show_date: bool) -> List[str]:
 def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
                           with_session_level_tags=True, top_header_tags=[],
                           show_date=False, transpose=False):
+
+    top_header_tags = [simple_tag_id_encoding(fix_tag) for fix_tag in top_header_tags]
     rows = []
     for key in (*top_header_tags, *sorted(used_fix_tags)):
         fix_tag, formatted_fix_tag = decode_key_for_fix_tags(key)
@@ -808,7 +810,7 @@ Cfg = configparser.ConfigParser()
 cfg_init()
 
 if __name__ == '__main__':
-    extract_fix_blocks_for_fix_version("4.4")
+    extract_fix_blocks_for_fix_version(FixVersionInfo("4.4"))
     display_fix_blocks()
     exit()
 
