@@ -46,6 +46,10 @@ tr:hover {
    font-weight: bold;
 }
 
+.comment {
+  color: black !important;
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
 <script>
@@ -233,6 +237,19 @@ window.onload = function(){
     </thead>
 {% endmacro %}
 
+{% macro generate_table_comment_row(comment_row, transpose) %}
+   {%- if comment_row and not transpose -%}
+        <thead>
+        {%- for comment_col in comment_row -%}
+           {%- autoescape false %}
+               <th class="comment">{{ comment_col|replace('\n', '<br>') }}</th>
+           {%- endautoescape -%}
+        {%- endfor %}
+        </thead>
+   {%- endif -%}
+
+{% endmacro %}
+
 {% macro format_row_transpose_cell(header, cell) %}
    {%- set classes = [] -%}
    {%- if cell | length > 36 -%}
@@ -282,6 +299,7 @@ window.onload = function(){
     <table class="table">
         <caption>FIX lines in a grid ({{ size }})</caption>
         {{ generate_table_headers(headers, transpose) }}
+        {{ generate_table_comment_row(comment_row, transpose) }}
 
         {{ generate_table_body(headers, rows, transpose) }}
     </table>

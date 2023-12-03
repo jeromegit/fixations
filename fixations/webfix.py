@@ -47,13 +47,14 @@ def home():
     transpose = True if request.args.get('transpose', False) else False
 
     fix_tag_dict, fix_lines, used_fix_tags, fix_version = extract_fix_lines_from_str_lines(fix_lines_list)
-    headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
-                                          with_session_level_tags=False,
-                                          show_date=show_date, transpose=transpose)
+    headers, rows, comment_row = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
+                                                       with_session_level_tags=False,
+                                                       show_date=show_date, transpose=transpose)
     lookup_url_template_for_js = get_lookup_url_template_for_js(fix_version)
 
     context = {'headers': headers,
                'rows': rows,
+               'comment_row': comment_row,
                'show_date': show_date,
                'transpose': transpose,
                'max_count': TEXT_AREA_MAX_COUNT,

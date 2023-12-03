@@ -470,10 +470,12 @@ def get_fix_version_info_dict_for_lines(str_fix_lines) -> FixVersionInfo:
     return fix_version_info
 
 
-def get_kv_parts_from_line(line: str) -> Union[None, Tuple[str, List[str], str]]:
+def get_kv_parts_from_line(line: str) -> Tuple[str, List[str], str, str]:
     match = re.search(VERSION_RE, line)
     if not match:
-        return None
+        comment_match = re.search(r'#\s*(.*)', line)
+        comment = comment_match.group(1) if comment_match else ''
+        return '', [], '', comment
 
     fix_start, fix_end = match.span()
     body_length_start = line.find('9=')
@@ -483,7 +485,7 @@ def get_kv_parts_from_line(line: str) -> Union[None, Tuple[str, List[str], str]]
     fix_line = line[fix_start:]
     kv_parts = fix_line.split(separator)
 
-    return line_prefix, kv_parts, separator
+    return line_prefix, kv_parts, separator, ''
 
 
 # The resulting key is to be used for both sorting and encoding of block/sub-block information
@@ -534,8 +536,8 @@ def decode_key_for_fix_tags(key: str) -> Tuple[str, str]:
     return tag_id, formatted_tag_id
 
 
-def parse_fix_line_into_kvs(line: str, fix_version_info: FixVersionInfo) -> Dict[str, str]:
-    _, kv_parts, separator = get_kv_parts_from_line(line)
+def parse_fix_line_into_kvs(line: str, fix_version_info: FixVersionInfo) -> Tuple[Dict[str, str], str]:
+    _, kv_parts, separator, comment = get_kv_parts_from_line(line)
 
     kvs = {}
     fix_tags_by_tag_id = fix_version_info.fix_tags_by_tag_id
@@ -586,7 +588,8 @@ def parse_fix_line_into_kvs(line: str, fix_version_info: FixVersionInfo) -> Dict
             else:
                 print(f"ERROR: can't tokenize:'{kv_part}' into a key=value pair using separator:'{separator}'")
     #    print(f"{fix_line}:\n\t{kvs}")
-    return kvs
+
+    return kvs, comment
 
 
 def extract_version_from_first_fix_line(str_fix_lines):
@@ -631,17 +634,19 @@ def extract_fix_lines_from_str_lines(str_fix_lines: List[str]):
             fix_version_info = extract_info_for_fix_version(version)
             used_fix_tags = {}
             fix_lines = []
+            previous_line_comment = ''
             for line in str_fix_lines:
                 if line is not None and len(line) > 0 and not line.isspace():
-                    fix_tags = parse_fix_line_into_kvs(line.strip(), fix_version_info)
+                    fix_tags, comment = parse_fix_line_into_kvs(line.strip(), fix_version_info)
                     if fix_tags:
                         timestamp, error = extract_timestamp(line, fix_tags)
                         if timestamp:
                             for fix_tag_key in fix_tags.keys():
                                 used_fix_tags[fix_tag_key] = 1
-                            fix_lines.append((timestamp, fix_tags))
+                            fix_lines.append((timestamp, fix_tags, previous_line_comment))
                         else:
                             print(error)
+                    previous_line_comment = comment
 
             return fix_version_info.fix_tags_by_tag_id, fix_lines, used_fix_tags, version
 
@@ -666,7 +671,7 @@ def obfuscate_lines(lines: List[str], obfuscate_tags: set[str]) -> List[str]:
 
 
 def obfuscate_tag_values_in_line(line: str, obfuscate_tags: set[str]) -> None:
-    line_prefix, kv_parts, separator = get_kv_parts_from_line(line)
+    line_prefix, kv_parts, separator, comment = get_kv_parts_from_line(line)
 
     obfuscated_kvs: List = list()
     for kv_part in kv_parts:
@@ -679,7 +684,10 @@ def obfuscate_tag_values_in_line(line: str, obfuscate_tags: set[str]) -> None:
                     kv_part = '='.join((tag_id, obfuscated_value))
         obfuscated_kvs.append(kv_part)
 
-    obfuscated_line = line_prefix + separator.join(obfuscated_kvs)
+    if comment:
+        comment = '# ' + comment
+
+    obfuscated_line = line_prefix + separator.join(obfuscated_kvs) + comment
 
     return obfuscated_line
 
@@ -687,7 +695,7 @@ def obfuscate_tag_values_in_line(line: str, obfuscate_tags: set[str]) -> None:
 def create_header_for_fix_lines(fix_lines: str, show_date: bool) -> List[str]:
     headers = ['TAG_ID', 'TAG_NAME']
     previous_timestamp = None
-    for (timestamp, fix_tags) in fix_lines:
+    for (timestamp, fix_tags, _) in fix_lines:
         if show_date is False:
             timestamp = remove_date_from_datetime(timestamp)
         timestamp_with_delta = get_timestamp_with_delta(timestamp, previous_timestamp)
@@ -701,11 +709,24 @@ def create_header_for_fix_lines(fix_lines: str, show_date: bool) -> List[str]:
 #     if ' ' in tag_id:
 #
 
+def create_comment_row(fix_lines) -> Union[None | List[str]]:
+    cols = ['#', 'COMMENT']
+    comments_are_present = False
+    for (_, _, comment) in fix_lines:
+        if comment:
+            comments_are_present = True
+            cols.append(comment)
+        else:
+            cols.append('')
+
+    return cols if comments_are_present else None
+
+
 def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
                           with_session_level_tags=True, top_header_tags=[],
                           show_date=False, transpose=False):
-
     top_header_tags = [simple_tag_id_encoding(fix_tag) for fix_tag in top_header_tags]
+    comment_rows = create_comment_row(fix_lines)
     rows = []
     for key in (*top_header_tags, *sorted(used_fix_tags)):
         fix_tag, formatted_fix_tag = decode_key_for_fix_tags(key)
@@ -716,7 +737,7 @@ def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
         else:
             fix_tag_name = '???'
         cols = [formatted_fix_tag, fix_tag_name]
-        for (timestamp, fix_tags) in fix_lines:
+        for (_, fix_tags, comment) in fix_lines:
             value = fix_tags[key] if key in fix_tags else ''
             if 'time' in fix_tag_name.lower() and show_date is False:
                 value = remove_date_from_datetime(value)
@@ -728,7 +749,7 @@ def create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
     if transpose:
         headers, rows = transpose_data_grid(headers, rows)
 
-    return headers, rows
+    return headers, rows, comment_rows
 
 
 def transpose_data_grid(headers, rows):
@@ -797,8 +818,15 @@ def create_table_from_fix_lines(fix_lines: List[str], grid_style: str = 'psql') 
         exit(1)
 
     top_header_tags = [FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID]
-    headers, rows = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags, top_header_tags=top_header_tags)
-    rows.insert(len(top_header_tags), tabulate.SEPARATING_LINE)
+    headers, rows, comment_row = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags, top_header_tags=top_header_tags)
+    if comment_row:
+        rows.insert(0, comment_row)
+        rows.insert(1, tabulate.SEPARATING_LINE)
+        if top_header_tags:
+            rows.insert(len(top_header_tags) + 2, tabulate.SEPARATING_LINE)
+    else:
+        if top_header_tags:
+            rows.insert(len(top_header_tags), tabulate.SEPARATING_LINE)
 
     table = tabulate.tabulate(rows, headers=headers, stralign='left', tablefmt=grid_style)
 
