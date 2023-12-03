@@ -711,7 +711,7 @@ def create_header_for_fix_lines(fix_lines: str, show_date: bool) -> List[str]:
 #
 
 def create_comment_row(fix_lines) -> Union[None, List[str]]:
-    cols = ['#', 'COMMENT']
+    cols = ['#', '# Inline Comment']
     comments_are_present = False
     for (_, _, comment) in fix_lines:
         if comment:
