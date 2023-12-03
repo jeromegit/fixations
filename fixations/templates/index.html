@@ -50,6 +50,12 @@ tr:hover {
   color: black !important;
 }
 
+.version {
+  font-size: 12px;
+  font-style: italic;
+  color: #439A97;
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
 <script>
@@ -304,5 +310,7 @@ window.onload = function(){
         {{ generate_table_body(headers, rows, transpose) }}
     </table>
 {% endif %}
+<br>
+<div class="version">Fixations version: {{ version }}</div>
 </body>
 </html>

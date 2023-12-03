@@ -18,6 +18,7 @@ from xml.dom.minidom import parse
 import requests as requests
 import tabulate
 from dataclasses_json import dataclass_json
+from importlib.metadata import version
 
 DEFAULT_FIX_VERSION = "4.2"
 FIX_TAG_ID_SENDING_TIME = "52"
@@ -709,7 +710,7 @@ def create_header_for_fix_lines(fix_lines: str, show_date: bool) -> List[str]:
 #     if ' ' in tag_id:
 #
 
-def create_comment_row(fix_lines) -> Union[None | List[str]]:
+def create_comment_row(fix_lines) -> Union[None, List[str]]:
     cols = ['#', 'COMMENT']
     comments_are_present = False
     for (_, _, comment) in fix_lines:
@@ -818,7 +819,8 @@ def create_table_from_fix_lines(fix_lines: List[str], grid_style: str = 'psql') 
         exit(1)
 
     top_header_tags = [FIX_TAG_ID_SENDER_COMP_ID, FIX_TAG_ID_TARGET_COMP_ID]
-    headers, rows, comment_row = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags, top_header_tags=top_header_tags)
+    headers, rows, comment_row = create_fix_lines_grid(fix_tag_dict, fix_lines, used_fix_tags,
+                                                       top_header_tags=top_header_tags)
     if comment_row:
         rows.insert(0, comment_row)
         rows.insert(1, tabulate.SEPARATING_LINE)
@@ -831,6 +833,10 @@ def create_table_from_fix_lines(fix_lines: List[str], grid_style: str = 'psql') 
     table = tabulate.tabulate(rows, headers=headers, stralign='left', tablefmt=grid_style)
 
     return table
+
+
+def get_version():
+    return version("fixations")
 
 
 # -- Configuration --------

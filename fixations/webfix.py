@@ -6,7 +6,7 @@ from flask import request
 
 from fixations.fix_store import Store
 from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lines_grid, get_store_path, \
-    get_lookup_url_template_for_js, create_obfuscate_tag_set, obfuscate_lines, create_table_from_fix_lines
+    get_lookup_url_template_for_js, create_obfuscate_tag_set, obfuscate_lines, create_table_from_fix_lines, get_version
 from fixations.short_str_id import get_short_str_id
 
 app = Flask(__name__)
@@ -61,7 +61,8 @@ def home():
                'fix_lines_list': [line.replace('"', '\\"') for line in fix_lines_list],  # Escape "
                'str_id': id_str,
                'lookup_url_template': lookup_url_template_for_js,
-               'size': f"{len(fix_lines)} lines / {char_count} chars"
+               'size': f"{len(fix_lines)} lines / {char_count} chars",
+               'version': get_version()
                }
     return render_template("index.html", **context)
 
