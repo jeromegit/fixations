@@ -696,10 +696,13 @@ def obfuscate_tag_values_in_line(line: str, obfuscate_tags: set[str]) -> None:
 def create_header_for_fix_lines(fix_lines: str, show_date: bool) -> List[str]:
     headers = ['TAG_ID', 'TAG_NAME']
     previous_timestamp = None
+    delta_total = timedelta()
     for (timestamp, fix_tags, _) in fix_lines:
         if show_date is False:
             timestamp = remove_date_from_datetime(timestamp)
-        timestamp_with_delta = get_timestamp_with_delta(timestamp, previous_timestamp)
+        timestamp_with_delta, delta = get_timestamp_with_delta(timestamp, previous_timestamp, delta_total)
+        if delta:
+            delta_total = delta_total + delta
         previous_timestamp = timestamp
         headers.append(timestamp_with_delta)
 
@@ -775,32 +778,55 @@ def remove_date_from_datetime(dt_str):
         return dt_str
 
 
-def get_timestamp_with_delta(timestamp: str, previous_timestamp: Union[str, None]) -> str:
-    if previous_timestamp:
-        stripped_timestamp = remove_date_from_datetime(timestamp)
-        stripped_previous_timestamp = remove_date_from_datetime(previous_timestamp)
+def extract_dt_from_timestamp(timestamp: str) -> datetime:
+    timestamp = remove_date_from_datetime(timestamp)
+    if '.' in timestamp:
+        dt_format = '%H:%M:%S.%f'
+    elif ',' in timestamp:
+        dt_format = '%H:%M:%S,%f'
+    else:
+        dt_format = '%H:%M:%S'
 
+    return datetime.strptime(timestamp, dt_format)
+
+
+def get_timestamp_with_delta(timestamp: str, previous_timestamp: Union[str, None], delta_total: timedelta = None) -> \
+        Union[str, Tuple[str, Union[timedelta, None]]]:
+    if previous_timestamp:
         try:
-            dt = datetime.strptime(stripped_timestamp, '%H:%M:%S.%f' if '.' in stripped_timestamp else "%H:%M:%S")
-            previous_dt = datetime.strptime(stripped_previous_timestamp,
-                                            '%H:%M:%S.%f' if '.' in stripped_previous_timestamp else "%H:%M:%S")
+            dt = extract_dt_from_timestamp(timestamp)
+            previous_dt = extract_dt_from_timestamp(previous_timestamp)
             delta = dt - previous_dt
             delta_in_hhmmssus = convert_delta_into_hhmmssus(delta)
 
-            return f"{timestamp}\n({delta_in_hhmmssus})"
+            if delta_total is None:
+                return f"{timestamp}\n({delta_in_hhmmssus})"
+            else:
+                delta_total = delta_total + delta
+                delta_total_in_us_in_hhmmssus = convert_delta_into_hhmmssus(delta_total)
+                return f"{timestamp}\nΔ:{delta_in_hhmmssus}\nΣ:{delta_total_in_us_in_hhmmssus}", delta
 
         except Exception as e:
-            return f"{timestamp}\n(??? {e} ???)"
-    else:
-        return timestamp
+            timestamp = f"{timestamp}\n(??? {e} ???)"
+
+    return timestamp if delta_total is None else (timestamp, None)
 
 
 def convert_delta_into_hhmmssus(delta: timedelta) -> str:
     sign = '-' if delta.total_seconds() < 0 else '+'
     delta_df = datetime(2000, 1, 1) + abs(delta)
     delta_in_hhmmssus = delta_df.strftime('%H:%M:%S.%f')
-    delta_in_hhmmssus = re.sub(r"[0.]+$", "", delta_in_hhmmssus)  # strip trailing 0's
-    delta_in_hhmmssus = re.sub(r"^[0:]+", "", delta_in_hhmmssus)  # replace leading 0:'s
+    delta_in_hhmmssus = re.sub(r"^[0:]+", "", delta_in_hhmmssus)  # strip leading 0:'s
+
+    # if usecs > 1000 add a comma
+    usecs_match = re.search(r'(\d{4,})$', delta_in_hhmmssus)
+    if usecs_match:
+        usecs = int(usecs_match.group(1))
+        if usecs > 0 and usecs % 1_000 > 0:
+            usecs_with_commas = "{:0=7,}".format(usecs)
+            delta_in_hhmmssus = re.sub(r'(\d+)$', usecs_with_commas, delta_in_hhmmssus)
+        else:
+            delta_in_hhmmssus = re.sub(r"[0.,]+$", "", delta_in_hhmmssus)  # strip trailing 0's
 
     return sign + delta_in_hhmmssus
 

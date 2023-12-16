@@ -1,5 +1,6 @@
 import os
 import pdb
+from datetime import timedelta
 from typing import List
 
 import pytest
@@ -109,31 +110,31 @@ def assert_lines_with_timestamp(timestamp_prefix):
     non_padded_used_fix_tags = {k.lstrip('0'): v for k, v in used_fix_tags.items()}
 
     assert non_padded_fix_lines == [(timestamp, {'8': 'FIX.4.2',
-                                      '9': '0192',
-                                      '35': 'D (NewOrderSingle)',
-                                      '34': '000006393',
-                                      '52': TAG52_TIMESTAMP,
-                                      '49': 'MY_SCID',
-                                      '56': 'MY_TCID',
-                                      '44': '88.7300',
-                                      '114': 'N (No)',
-                                      '55': 'GOOG',
-                                      '8002': '0',
-                                      '110': '1000',
-                                      '10': '042'})]
+                                                 '9': '0192',
+                                                 '35': 'D (NewOrderSingle)',
+                                                 '34': '000006393',
+                                                 '52': TAG52_TIMESTAMP,
+                                                 '49': 'MY_SCID',
+                                                 '56': 'MY_TCID',
+                                                 '44': '88.7300',
+                                                 '114': 'N (No)',
+                                                 '55': 'GOOG',
+                                                 '8002': '0',
+                                                 '110': '1000',
+                                                 '10': '042'})]
     assert non_padded_used_fix_tags == {'8': 1,
-                             '9': 1,
-                             '35': 1,
-                             '34': 1,
-                             '52': 1,
-                             '49': 1,
-                             '56': 1,
-                             '44': 1,
-                             '114': 1,
-                             '55': 1,
-                             '8002': 1,
-                             '110': 1,
-                             '10': 1}
+                                        '9': 1,
+                                        '35': 1,
+                                        '34': 1,
+                                        '52': 1,
+                                        '49': 1,
+                                        '56': 1,
+                                        '44': 1,
+                                        '114': 1,
+                                        '55': 1,
+                                        '8002': 1,
+                                        '110': 1,
+                                        '10': 1}
 
 
 def test_dont_choke_on_emptyish_lines():
@@ -145,6 +146,7 @@ def test_dont_choke_on_emptyish_lines():
         " \t ",  # test with tab and spaces
     ]
     extract_fix_lines_from_str_lines(lines)
+
 
 def test_additional_fixtags_with_bogus_urls_and_no_exception_was_raised():
     check_for_additional_fix_definitions('file://bogus/path.txt')
@@ -206,19 +208,28 @@ def test_get_timestamp_with_delta():
     assert get_timestamp_with_delta("12:34:57.1", "12:34:56") == "12:34:57.1\n(+1.1)"
     assert get_timestamp_with_delta("12:34:57.222", "12:34:56.111") == "12:34:57.222\n(+1.111)"
     assert get_timestamp_with_delta("12:34:57.222001", "12:34:56.111001") == "12:34:57.222001\n(+1.111)"
-    assert get_timestamp_with_delta("12:34:56.123457", "12:34:56.000001") == "12:34:56.123457\n(+.123456)"
+    assert get_timestamp_with_delta("12:34:56.123457", "12:34:56.000057") == "12:34:56.123457\n(+.123,400)"
+    assert get_timestamp_with_delta("12:34:56.123457", "12:34:56.000007") == "12:34:56.123457\n(+.123,450)"
+    assert get_timestamp_with_delta("12:34:56.123457", "12:34:56.000001") == "12:34:56.123457\n(+.123,456)"
     last_us = "23:59:59.999999"
-    last_us_with_delta = f"{last_us}\n(+{last_us})"
+    last_us_with_delta = f"{last_us}\n(+23:59:59.999,999)"
     assert get_timestamp_with_delta(last_us, "00:00:00") == last_us_with_delta
     assert get_timestamp_with_delta(last_us, "00:00:00.000") == last_us_with_delta
     assert get_timestamp_with_delta(last_us, "00:00:00.000000") == last_us_with_delta
-    assert get_timestamp_with_delta(last_us, "00:00:00.000001") == "23:59:59.999999\n(+23:59:59.999998)"
+    assert get_timestamp_with_delta(last_us, "00:00:00.000001") == "23:59:59.999999\n(+23:59:59.999,998)"
 
     # Bad format
     assert get_timestamp_with_delta("12:34:57.",
                                     "12:34:56") == "12:34:57.\n(??? time data '12:34:57.' does not match format '%H:%M:%S.%f' ???)"
     assert get_timestamp_with_delta("12:34:57",
                                     "12:34:56.") == "12:34:57\n(??? time data '12:34:56.' does not match format '%H:%M:%S.%f' ???)"
+
+    # With delta total
+    delta_total = timedelta(minutes=1, seconds=23)
+    timestamp_str = "12:34:56.123457"
+    assert get_timestamp_with_delta(timestamp_str, "12:34:56.000001",
+                                    delta_total)[0] == f"{timestamp_str}\nΔ:+.123,456\nΣ:+1:23.123,456"
+    assert get_timestamp_with_delta(timestamp_str, None, delta_total)[0] == f"{timestamp_str}"
 
 
 def test_tuple_equal():
