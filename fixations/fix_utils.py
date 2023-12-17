@@ -459,6 +459,11 @@ def determine_fix_version(str_fix_lines):
         if match:
             version = match.group(1)
             return version
+        else:
+            command_version_match = re.search(r'^\s*!\s*version\s*=\s*(.*)', line, re.IGNORECASE)
+            if command_version_match:
+                version = command_version_match.group(1)
+                return version
 
     return None
 

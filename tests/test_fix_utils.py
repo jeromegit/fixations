@@ -45,6 +45,10 @@ def test_lines_with_versions():
     assert extract_version_from_first_fix_line(create_fix_lines_with_version('FIX.4.2')) == '4.2'
     assert extract_version_from_first_fix_line(create_fix_lines_with_version('FIX.5.0SP1')) == '5.0SP1'
     assert extract_version_from_first_fix_line(create_fix_lines_with_version('FIXT.1.1')) == '1.1'
+    # version specified as a !version=X.Y command
+    assert extract_version_from_first_fix_line(["!version=4.2\n"]) == '4.2'
+    assert extract_version_from_first_fix_line(["! VERSION = 4.3\n"]) == '4.3'
+    assert extract_version_from_first_fix_line(["some bogus line\n", "!version=4.4\n"]) == '4.4'
 
 
 def test_path_for_fix_versions():
