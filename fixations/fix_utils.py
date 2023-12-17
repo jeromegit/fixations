@@ -468,14 +468,6 @@ def determine_fix_version(str_fix_lines):
     return None
 
 
-def get_fix_version_info_dict_for_lines(str_fix_lines) -> FixVersionInfo:
-    version = determine_fix_version(str_fix_lines)
-    assert version, "ERROR: can't extract FIX version from lines starting with line:{str_fix_lines[0]}"
-    fix_version_info = extract_info_for_fix_version(version)
-
-    return fix_version_info
-
-
 def get_kv_parts_from_line(line: str) -> Tuple[str, List[str], str, str, str]:
     match = re.search(VERSION_RE, line)
     if not match:
