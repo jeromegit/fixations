@@ -476,12 +476,18 @@ def get_fix_version_info_dict_for_lines(str_fix_lines) -> FixVersionInfo:
     return fix_version_info
 
 
-def get_kv_parts_from_line(line: str) -> Tuple[str, List[str], str, str]:
+def get_kv_parts_from_line(line: str) -> Tuple[str, List[str], str, str, str]:
     match = re.search(VERSION_RE, line)
     if not match:
+        comment = command = ''
         comment_match = re.search(r'#\s*(.*)', line)
-        comment = comment_match.group(1) if comment_match else ''
-        return '', [], '', comment
+        if comment_match:
+            comment = comment_match.group(1)
+        else:
+            command_match = re.search(r'^\s*!\s*(.*)', line, re.IGNORECASE)
+            command = command_match.group(1) if command_match else ''
+
+        return '', [], '', comment, command
 
     fix_start, fix_end = match.span()
     body_length_start = line.find('9=')
@@ -491,7 +497,7 @@ def get_kv_parts_from_line(line: str) -> Tuple[str, List[str], str, str]:
     fix_line = line[fix_start:]
     kv_parts = fix_line.split(separator)
 
-    return line_prefix, kv_parts, separator, ''
+    return line_prefix, kv_parts, separator, '', ''
 
 
 # The resulting key is to be used for both sorting and encoding of block/sub-block information
@@ -543,7 +549,7 @@ def decode_key_for_fix_tags(key: str) -> Tuple[str, str]:
 
 
 def parse_fix_line_into_kvs(line: str, fix_version_info: FixVersionInfo) -> Tuple[Dict[str, str], str]:
-    _, kv_parts, separator, comment = get_kv_parts_from_line(line)
+    _, kv_parts, separator, comment, _ = get_kv_parts_from_line(line)
 
     kvs = {}
     fix_tags_by_tag_id = fix_version_info.fix_tags_by_tag_id
@@ -677,7 +683,7 @@ def obfuscate_lines(lines: List[str], obfuscate_tags: set[str]) -> List[str]:
 
 
 def obfuscate_tag_values_in_line(line: str, obfuscate_tags: set[str]) -> None:
-    line_prefix, kv_parts, separator, comment = get_kv_parts_from_line(line)
+    line_prefix, kv_parts, separator, comment, command = get_kv_parts_from_line(line)
 
     obfuscated_kvs: List = list()
     for kv_part in kv_parts:
@@ -693,7 +699,10 @@ def obfuscate_tag_values_in_line(line: str, obfuscate_tags: set[str]) -> None:
     if comment:
         comment = '# ' + comment
 
-    obfuscated_line = line_prefix + separator.join(obfuscated_kvs) + comment
+    if command:
+        command = '!' + command
+
+    obfuscated_line = line_prefix + separator.join(obfuscated_kvs) + comment + command
 
     return obfuscated_line
 
