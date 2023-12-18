@@ -38,6 +38,7 @@ CFG_FILE_KEY_LOOKUP_URL_TEMPLATE = "lookup_url_template"
 CFG_ADDITIONAL_FIX_DEFINITIONS_URL = "additional_fix_definition_url"
 CFG_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH = "additional_fix_definition_path"
 CFG_UPLOAD_URL = "upload_url"
+CFG_ADDITIONAL_COMPONENTS_IN_BLOCKS = "additional_components_in_blocks"
 
 # cfg / default values
 DEFAULT_CFG_FILE_PATH = os.environ["HOME"] + "/.fixations.ini"
@@ -86,7 +87,7 @@ class FixBlock:
     name: str
     count_tag: str  # to be used as block's common tag
     start_tag: str  # to be used as start of block
-    components_by_position: Dict[int, FixComponent] = field(default_factory=dict)
+    components_by_position: Dict[str, FixComponent] = field(default_factory=dict)
     tag_ids: set[str] = field(default_factory=set)
 
 
@@ -95,9 +96,9 @@ class FixVersionInfo:
     version: str
     fix_tags_by_tag_id: Dict[str, FixTag] = field(default_factory=dict)
 
-    fix_blocks_by_id: Dict[int, 'FixBlock'] = field(default_factory=dict)
+    fix_blocks_by_id: Dict[str, 'FixBlock'] = field(default_factory=dict)
     fix_blocks_by_name: Dict[str, 'FixBlock'] = field(default_factory=dict)
-    fix_blocks_by_count_tag: Dict[int, 'FixBlock'] = field(default_factory=dict)
+    fix_blocks_by_count_tag: Dict[str, 'FixBlock'] = field(default_factory=dict)
 
 
 # Caches
@@ -309,8 +310,8 @@ def extract_elements_from_file_by_tag_name(fix_version, file, tag_name) -> NodeL
 
 @cache
 def extract_info_for_fix_version(fix_version=DEFAULT_FIX_VERSION) -> FixVersionInfo:
-    versions = get_list_of_available_fix_versions()
-    assert fix_version in versions, f"The specified FIX version:{fix_version} is not valid. Use one of these {versions}"
+    available_versions = get_list_of_available_fix_versions()
+    assert fix_version in available_versions, f"The specified FIX version:{fix_version} is not valid. Use one of these {available_versions}"
     fix_version_info = FixVersionInfo(fix_version)
 
     # Extract all FIX tags from Fields XML file
@@ -402,10 +403,8 @@ def extract_fix_blocks_for_fix_version(fix_version_info: FixVersionInfo) -> None
         block_id, tag, indent, position = extract_tag_data_from_xml(component,
                                                                     ['ComponentID', 'TagText', 'Indent', 'Position'])
         if block_id in fix_version_info.fix_blocks_by_id:
-            fix_block = fix_version_info.fix_blocks_by_id[block_id]
             fix_component = FixComponent(block_id, tag, indent, position)
-            fix_block.components_by_position[position] = fix_component
-            fix_block.tag_ids.add(tag)
+            fix_block = add_fix_component_as_fix_block(fix_version_info, fix_component)
 
             if position == '1':
                 fix_block.count_tag = tag
@@ -413,7 +412,40 @@ def extract_fix_blocks_for_fix_version(fix_version_info: FixVersionInfo) -> None
             elif position == '2':
                 fix_block.start_tag = tag
 
+    add_additional_components_to_blocks(fix_version_info)
     convert_tag_ids_as_name_to_fix_tags(fix_version_info)
+
+
+def add_additional_components_to_blocks(fix_version_info: FixVersionInfo) -> None:
+    additional_components_to_blocks = get_cfg_value(CFG_ADDITIONAL_COMPONENTS_IN_BLOCKS)
+    if additional_components_to_blocks:
+        components_to_blocks_info_list = additional_components_to_blocks.split()
+        for components_to_blocks_info in components_to_blocks_info_list:
+            # format: <count_tag_in_block>@<FIX_version_1>,<FIX_version_2>=<additional_tag_1>,<additional_tag_2>
+            # Real example: 453@4.4=2376
+            components_to_blocks_info_match = re.search(r"(\d+)@([^=]+)=([0-9,]+)", components_to_blocks_info)
+            assert components_to_blocks_info_match, f"Cfg's {CFG_ADDITIONAL_COMPONENTS_IN_BLOCKS} has an invalid format"
+            block_count_tag, fix_versions_str, additional_tags_str = components_to_blocks_info_match.groups()
+            fix_versions = fix_versions_str.split(',')
+            for fix_version in fix_versions:
+                if fix_version == fix_version_info.version:
+                    if block_count_tag in fix_version_info.fix_blocks_by_count_tag:
+                        components_by_position = fix_version_info.fix_blocks_by_count_tag[
+                            block_count_tag].components_by_position
+                        component_id = components_by_position['1'].id
+                        additional_tags = additional_tags_str.split(',')
+                        for additional_tag in additional_tags:
+                            next_component_position = str(len(components_by_position))
+                            add_fix_component_as_fix_block(fix_version_info,
+                                              FixComponent(component_id, additional_tag, 1, next_component_position))
+
+
+def add_fix_component_as_fix_block(fix_version_info: FixVersionInfo, fix_component: FixComponent) -> FixBlock:
+    fix_block = fix_version_info.fix_blocks_by_id[fix_component.id]
+    fix_block.components_by_position[fix_component.position] = fix_component
+    fix_block.tag_ids.add(fix_component.tag)
+
+    return fix_block
 
 
 def convert_tag_ids_as_name_to_fix_tags(fix_version_info: FixVersionInfo) -> None:
