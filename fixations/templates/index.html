@@ -278,9 +278,8 @@ window.onload = function(){
 
 </head>
 <body>
-<h3>Paste FIX log lines below &#x1F447;</h3>
 <form action="{{ url_for('home') }}" onsubmit="on_submit()" method="get">
-    <textarea id="fix_lines" name="fix_lines" rows="10" maxlength="{{ max_count }}"
+    <textarea id="fix_lines" name="fix_lines" rows="10" maxlength="{{ max_count }}" placeholder="Paste FIX log lines here...&#x1F447;"
               onchange="document.getElementById('id').value = ''"></textarea>
     <input type="hidden" id="id" name="id" value="{{ str_id }}">
     <div><span id="count">0</span><span id="max_count"> / {{ max_count }}</span></div>

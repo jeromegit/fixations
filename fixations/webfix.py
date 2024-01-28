@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import urllib.parse
 from typing import List, Tuple
+from urllib.parse import unquote
 
 from flask import Flask, render_template
 from flask import request
@@ -50,7 +51,7 @@ def home():
     id_str = lookup_url_template_for_js = error = None
     char_count = 0
     try:
-        fix_lines_list, id_str, char_count = get_fix_lines_list(request)
+        fix_lines_list, id_str, char_count, error = get_fix_lines_list(request)
         if request.args.get(FORM_UPLOAD, False):
             uploaded_url = get_url_for_str_id(id_str)
             return uploaded_url
@@ -94,7 +95,7 @@ def custom_sort_for_top_tags(row: List[str], tags: List[int]) -> Tuple[int, int]
 
 
 def set_top_rows(req, transpose, rows: List[List[str]]) -> Tuple[List[str], List[List[str]]]:
-    top_tags_str = req.args.get('top_tags', None)
+    top_tags_str = unquote(request.cookies.get('top_tags'))
     if top_tags_str and not transpose:
         top_tags = create_tag_list(top_tags_str)
         sorted_rows_with_top_tags = sorted(rows, key=lambda row: custom_sort_for_top_tags(row, top_tags))
@@ -110,10 +111,13 @@ def get_fix_lines_list(req):
     obfuscate_tags = create_tag_set(obfuscate_tags_str)
 
     str_id = req.args.get(FORM_ID)
+    error = ''
     if str_id and not obfuscate_tags:
         fix_lines_str, _ = store.get(str_id)
         if fix_lines_str is None:
-            fix_lines_str = f"There's no record for id:{str_id}!"
+            if str_id and str_id != "None":
+                error = f"There's no record for id:{str_id}!"
+            fix_lines_str = ''
         fix_lines_list = fix_lines_str.splitlines()
         char_count = len(fix_lines_str)
     else:
@@ -128,7 +132,7 @@ def get_fix_lines_list(req):
         else:
             char_count = 0
 
-    return fix_lines_list, str_id, char_count
+    return fix_lines_list, str_id, char_count, error
 
 
 def store_fix_lines(fix_lines_str: str) -> str:
