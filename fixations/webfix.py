@@ -21,6 +21,9 @@ FORM_UPLOAD = 'upload'
 
 store = Store(get_store_path())
 
+DEFAULT_TOP_TAGS_STR = "49 56 35 39 150 11"
+DEFAULT_TOP_TAGS = DEFAULT_TOP_TAGS_STR.split()
+
 
 @app.route('/stdin', methods=['POST'])
 def receive_data():
@@ -68,7 +71,10 @@ def home():
                'comment_row': comment_row,
                'show_date': show_date,
                'transpose': transpose,
-               'top_tags': top_tags,
+
+               'tags_to_highlight': top_tags if top_tags else DEFAULT_TOP_TAGS,
+               'DEFAULT_TOP_TAGS_STR': DEFAULT_TOP_TAGS_STR,
+
                'max_count': TEXT_AREA_MAX_COUNT,
                'fix_lines_list': [line.replace('"', '\\"') for line in fix_lines_list],  # Escape "
                'str_id': id_str,

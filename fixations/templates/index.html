@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>FIXations's webfix app</title>
+    <title>FIXations' webfix app</title>
     <style>
 body {
   font-family: sans-serif;
@@ -171,7 +171,7 @@ function set_obfuscate_tags() {
 }
 
 // --------- Top tags --------
-const DEFAULT_TOP_TAGS = "49 56 35 39 150";
+const DEFAULT_TOP_TAGS = "{{ DEFAULT_TOP_TAGS_STR }}";
 const TOP_TAGS_TEXT_NAME = "top_tags"
 
 function set_top_tags() {
@@ -370,7 +370,7 @@ window.onload = function(){
    {%- endif -%}
 {% endmacro %}
 
-{% macro generate_table_body(headers, rows, transpose, top_tags) %}
+{% macro generate_table_body(headers, rows, transpose, tags_to_highlight) %}
     <tbody>
     {% if transpose %}
         {% for row in rows %}
@@ -382,7 +382,7 @@ window.onload = function(){
         {% endfor %}
     {% else %}
         {% for row in rows -%}
-           <tr {{ 'class=row-highlight' if row[0] in top_tags else '' }}>
+           <tr {{ 'class=row-highlight' if row[0] in tags_to_highlight else '' }}>
                {%- for cell in row -%}
                    {%- if cell | length > 36 %}
                       <td class="tdbreak">{{ cell }}</td>
@@ -402,10 +402,10 @@ window.onload = function(){
         {{ generate_table_headers(headers, transpose) }}
         {{ generate_table_comment_row(comment_row, transpose) }}
 
-        {{ generate_table_body(headers, rows, transpose, top_tags) }}
+        {{ generate_table_body(headers, rows, transpose, tags_to_highlight) }}
     </table>
 {% endif %}
 <br>
-<div class="version">Fixations version: {{ version }}</div>
+<div class="version">FIXations version: {{ version }}</div>
 </body>
 </html>
