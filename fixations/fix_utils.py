@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import cache
+from importlib.metadata import version
 from string import Template
 from typing import Dict, Union, List, Tuple, Set
 from xml.dom.minicompat import NodeList
@@ -18,7 +19,6 @@ from xml.dom.minidom import parse
 import requests as requests
 import tabulate
 from dataclasses_json import dataclass_json
-from importlib.metadata import version
 
 DEFAULT_FIX_VERSION = "4.2"
 FIX_TAG_ID_SENDING_TIME = "52"
@@ -437,7 +437,8 @@ def add_additional_components_to_blocks(fix_version_info: FixVersionInfo) -> Non
                         for additional_tag in additional_tags:
                             next_component_position = str(len(components_by_position))
                             add_fix_component_as_fix_block(fix_version_info,
-                                              FixComponent(component_id, additional_tag, 1, next_component_position))
+                                                           FixComponent(component_id, additional_tag, 1,
+                                                                        next_component_position))
 
 
 def add_fix_component_as_fix_block(fix_version_info: FixVersionInfo, fix_component: FixComponent) -> FixBlock:
@@ -689,13 +690,22 @@ def extract_fix_lines_from_str_lines(str_fix_lines: List[str]):
     return {}, [], {}, None
 
 
-def create_obfuscate_tag_set(obfuscate_tags_str: str) -> Set[int]:
-    if obfuscate_tags_str and len(obfuscate_tags_str):
-        obfuscate_tag_set = set(obfuscate_tags_str.split())
+def create_tag_set(tags_str: str) -> Set[str]:
+    if tags_str and len(tags_str):
+        tag_set = set(tags_str.split())
     else:
-        obfuscate_tag_set = set()
+        tag_set = set()
 
-    return obfuscate_tag_set
+    return tag_set
+
+
+def create_tag_list(tags_str: str) -> List[int]:
+    if tags_str and len(tags_str):
+        tags = [int(x) for x in tags_str.split() if x.isdigit()]
+    else:
+        tags = []
+
+    return tags
 
 
 def obfuscate_lines(lines: List[str], obfuscate_tags: set[str]) -> List[str]:

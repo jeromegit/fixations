@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 import urllib.parse
+from typing import List, Tuple
 
 from flask import Flask, render_template
 from flask import request
 
 from fixations.fix_store import Store
 from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lines_grid, get_store_path, \
-    get_lookup_url_template_for_js, create_obfuscate_tag_set, obfuscate_lines, create_table_from_fix_lines, get_version
+    get_lookup_url_template_for_js, obfuscate_lines, create_table_from_fix_lines, get_version, \
+    create_tag_set, create_tag_list
 from fixations.short_str_id import get_short_str_id
 
 app = Flask(__name__)
@@ -41,7 +43,7 @@ def home():
     show_date = True if request.args.get('show_date', False) else False
     transpose = True if request.args.get('transpose', False) else False
 
-    headers = rows = comment_row = fix_lines_list = fix_lines = []
+    headers = comment_row = fix_lines_list = fix_lines = []
     id_str = lookup_url_template_for_js = error = None
     char_count = 0
     try:
@@ -57,12 +59,16 @@ def home():
         lookup_url_template_for_js = get_lookup_url_template_for_js(fix_version)
     except Exception as e:
         error = e
+        rows = []
+
+    top_tags, rows = set_top_rows(request, rows)
 
     context = {'headers': headers,
                'rows': rows,
                'comment_row': comment_row,
                'show_date': show_date,
                'transpose': transpose,
+               'top_tags': top_tags,
                'max_count': TEXT_AREA_MAX_COUNT,
                'fix_lines_list': [line.replace('"', '\\"') for line in fix_lines_list],  # Escape "
                'str_id': id_str,
@@ -74,9 +80,28 @@ def home():
     return render_template("index.html", **context)
 
 
+def custom_sort_for_top_tags(row: List[str], tags: List[int]) -> Tuple[int, int]:
+    if int(row[0]) in tags:
+        return tags.index(int(row[0])), 0  # Sort based on index in tags
+    else:
+        return len(tags), int(row[0])  # Sort numerically
+
+
+def set_top_rows(req, rows: List[List[str]]) -> Tuple[List[str], List[List[str]]]:
+    top_tags_str = req.args.get('top_tags', None)
+    if top_tags_str:
+        top_tags = create_tag_list(top_tags_str)
+        sorted_rows_with_top_tags = sorted(rows, key=lambda row: custom_sort_for_top_tags(row, top_tags))
+        top_tags = [str(tag) for tag in top_tags]
+
+        return top_tags, sorted_rows_with_top_tags
+    else:
+        return [], rows
+
+
 def get_fix_lines_list(req):
     obfuscate_tags_str = req.args.get('obfuscate_tags', None)
-    obfuscate_tags = create_obfuscate_tag_set(obfuscate_tags_str)
+    obfuscate_tags = create_tag_set(obfuscate_tags_str)
 
     str_id = req.args.get(FORM_ID)
     if str_id and not obfuscate_tags:
@@ -114,7 +139,7 @@ def get_url_for_str_id(id_str: str) -> str:
 
 
 def main():
-    app.run(debug=True, port=8001)
+    app.run(debug=True, port=7979)
 
 
 if __name__ == "__main__":

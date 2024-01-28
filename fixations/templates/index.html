@@ -113,7 +113,7 @@ function set_obfuscate_tags() {
     tags = document.getElementById(OBFUSCATE_TAGS_TEXT_NAME).value
     if (tags == "") {
         tags = Cookies.get(OBFUSCATE_TAGS_TEXT_NAME)
-        if (tags === undefined || tags == "") {
+        if (tags === undefined || tags === "undefined" || tags == "") {
             obfuscate_tags.value = DEFAULT_OBFUSCATE_TAGS;
         } else {
             obfuscate_tags.value = tags;
@@ -125,9 +125,28 @@ function set_obfuscate_tags() {
 	obfuscate_tags.disabled = ! checked;
 }
 
+// --------- Top tags --------
+const DEFAULT_TOP_TAGS = "49 56 35 39 150";
+const TOP_TAGS_TEXT_NAME = "top_tags"
+
+function set_top_tags() {
+    top_tags = document.getElementById(TOP_TAGS_TEXT_NAME);
+
+    tags = document.getElementById(TOP_TAGS_TEXT_NAME).value
+    if (tags == "") {
+        tags = Cookies.get(TOP_TAGS_TEXT_NAME)
+        if (tags === undefined || tags === "undefined" || tags == "") {
+            tags = DEFAULT_TOP_TAGS;
+        }
+        top_tags.value = tags;
+    }
+    Cookies.set(TOP_TAGS_TEXT_NAME, tags, { expires: 999, sameSite: 'Strict'});
+}
+
 function on_submit() {
 	set_obfuscate_checkbox();
     set_obfuscate_tags();
+    set_top_tags();
 }
 
 window.onload = function(){
@@ -143,6 +162,9 @@ window.onload = function(){
 		set_obfuscate_checkbox();
         set_obfuscate_tags();
     });
+
+	// Top FIX tags
+	set_top_tags();
 
     fix_lines_elt.addEventListener('input', function (e) {
         update_count();
@@ -224,6 +246,9 @@ window.onload = function(){
     <input type="text" id="obfuscate_tags" name="obfuscate_tags" value="">
 
     <br>
+    <label for="top_tags"> Set at top tags</label> <input type="text" id="top_tags" name="top_tags" value="">
+    <br>
+    <br>
     <input type="button" value="Clear" title="Ctrl-L to clear"
            onclick="clear_fix_lines()"/>
     <input type="submit" id="fix_form_submit" title="Ctrl-Enter to submit" value="Parse FIX"/>
@@ -288,7 +313,7 @@ window.onload = function(){
    {%- endif -%}
 {% endmacro %}
 
-{% macro generate_table_body(headers, rows, transpose) %}
+{% macro generate_table_body(headers, rows, transpose, top_tags) %}
     <tbody>
     {% if transpose %}
         {% for row in rows %}
@@ -300,7 +325,7 @@ window.onload = function(){
         {% endfor %}
     {% else %}
         {% for row in rows -%}
-           <tr {{ 'class=row-highlight' if row[0] in ['35', '39', '49', '56', '11'] else '' }}>
+           <tr {{ 'class=row-highlight' if row[0] in top_tags else '' }}>
                {%- for cell in row -%}
                    {%- if cell | length > 36 %}
                       <td class="tdbreak">{{ cell }}</td>
@@ -320,7 +345,7 @@ window.onload = function(){
         {{ generate_table_headers(headers, transpose) }}
         {{ generate_table_comment_row(comment_row, transpose) }}
 
-        {{ generate_table_body(headers, rows, transpose) }}
+        {{ generate_table_body(headers, rows, transpose, top_tags) }}
     </table>
 {% endif %}
 <br>
