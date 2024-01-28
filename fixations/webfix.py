@@ -61,7 +61,7 @@ def home():
         error = e
         rows = []
 
-    top_tags, rows = set_top_rows(request, rows)
+    top_tags, rows = set_top_rows(request, transpose, rows)
 
     context = {'headers': headers,
                'rows': rows,
@@ -87,9 +87,9 @@ def custom_sort_for_top_tags(row: List[str], tags: List[int]) -> Tuple[int, int]
         return len(tags), int(row[0])  # Sort numerically
 
 
-def set_top_rows(req, rows: List[List[str]]) -> Tuple[List[str], List[List[str]]]:
+def set_top_rows(req, transpose, rows: List[List[str]]) -> Tuple[List[str], List[List[str]]]:
     top_tags_str = req.args.get('top_tags', None)
-    if top_tags_str:
+    if top_tags_str and not transpose:
         top_tags = create_tag_list(top_tags_str)
         sorted_rows_with_top_tags = sorted(rows, key=lambda row: custom_sort_for_top_tags(row, top_tags))
         top_tags = [str(tag) for tag in top_tags]
