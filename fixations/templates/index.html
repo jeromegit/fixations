@@ -6,8 +6,9 @@
 body {
   font-family: sans-serif;
 }
-textarea {
+textarea, textarea:focus, textarea:placeholder-shown {
   width: 100%;
+   border: 2px solid #439A97;
 }
 
 table {
@@ -72,6 +73,7 @@ tr:hover {
 .container {
     display: flex; /* Use flexbox for layout */
     width: 100%; /* Full width */
+    border: 1px solid #439A97;
 }
 
 /* Style for the left div */
@@ -104,9 +106,10 @@ label {
 }
 
 .vertical-line {
-    width: 2px; /* Width of the line */
-    background-color: gray; /* Color of the line */
+    width: 2px;
+    background-color: #439A97;
 }
+
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
@@ -309,7 +312,7 @@ window.onload = function(){
             <input type="checkbox" id="obfuscate" name="obfuscate" value="true"><label for="obfuscate"> Obfuscate these tags</label>
             <input type="text" id="obfuscate_tags" name="obfuscate_tags" value="">
             <br>
-            <label for="top_tags"> Set at top tags</label> <input type="text" id="top_tags" name="top_tags" value="">
+            <label for="top_tags"> Top tags</label> <input type="text" id="top_tags" name="top_tags" value="">
             <br>
         </div>
     </div>

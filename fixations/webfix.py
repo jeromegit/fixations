@@ -88,10 +88,14 @@ def home():
 
 
 def custom_sort_for_top_tags(row: List[str], tags: List[int]) -> Tuple[int, int]:
-    if int(row[0]) in tags:
-        return tags.index(int(row[0])), 0  # Sort based on index in tags
+    tag_col = row[0]
+    if tag_col.isdecimal():
+        tag_col = int(tag_col)
+        if tag_col in tags:
+            return tags.index(tag_col), 0  # Sort based on index in tags
     else:
-        return len(tags), int(row[0])  # Sort numerically
+        tag_col = ''.join(filter(str.isdigit, tag_col))
+    return len(tags), int(tag_col)  # Sort numerically
 
 
 def set_top_rows(req, transpose, rows: List[List[str]]) -> Tuple[List[str], List[List[str]]]:
