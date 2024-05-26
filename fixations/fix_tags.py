@@ -6,7 +6,7 @@ import urwid
 from tabulate import tabulate
 from termcolor import colored
 
-from fixations.fix_utils import extract_tag_dict_for_fix_version, DEFAULT_FIX_VERSION
+from fixations.fix_utils import extract_info_for_fix_version, DEFAULT_FIX_VERSION
 
 DEFAULT_VERSION = "4.2"
 
@@ -99,7 +99,8 @@ def parse_args():
 def main():
     cli_args = parse_args()
     tag = cli_args.tag
-    fix_tag_dict = extract_tag_dict_for_fix_version(cli_args.fix_version)
+    fix_info = extract_info_for_fix_version(cli_args.fix_version)
+    fix_tag_dict = fix_info.fix_tags_by_tag_id
 
     if tag:
         search_str = tag
