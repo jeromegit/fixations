@@ -1,5 +1,4 @@
 import os
-import pdb
 from datetime import timedelta
 from typing import List
 
@@ -7,9 +6,10 @@ import pytest
 
 import fixations
 from fixations.fix_utils import extract_fix_lines_from_str_lines, extract_info_for_fix_version, \
-    extract_version_from_first_fix_line, extract_timestamp, FIX_TAG_ID_SENDING_TIME, get_cfg_value, \
-    CFG_FILE_KEY_FIX_DEFINITIONS_PATH, path_for_fix_version, get_list_of_available_fix_versions, \
-    check_for_additional_fix_definitions, Additional_tag_cache, transpose_data_grid, get_timestamp_with_delta
+    extract_version_from_first_fix_line, extract_timestamp, FIX_TAG_ID_SENDING_TIME, path_for_fix_version, \
+    get_list_of_available_fix_versions, \
+    check_for_additional_fix_definitions, Additional_tag_cache, transpose_data_grid, get_timestamp_with_delta, \
+    get_fix_definition_dir
 
 ADDITIONAL_FIX_TAGS_URL = 'https://raw.githubusercontent.com/jeromegit/fixations/main/data/additional_fixtags.txt'
 
@@ -52,7 +52,7 @@ def test_lines_with_versions():
 
 
 def test_path_for_fix_versions():
-    root_dir = get_cfg_value(CFG_FILE_KEY_FIX_DEFINITIONS_PATH)
+    root_dir = get_fix_definition_dir()
     assert path_for_fix_version("4.2") == f"{root_dir}/FIX.4.2/Base"
     assert path_for_fix_version("5.0") == f"{root_dir}/FIX.5.0/Base"
     assert path_for_fix_version("5.0SP1") == f"{root_dir}/FIX.5.0SP1/Base"

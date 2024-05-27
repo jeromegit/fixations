@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import configparser
+import inspect
 import json
 import os.path
 import pathlib
 import re
-import shutil
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -24,9 +24,11 @@ DEFAULT_FIX_VERSION = "4.2"
 FIX_TAG_ID_SENDING_TIME = "52"
 FIX_TAG_ID_SENDER_COMP_ID = "49"
 FIX_TAG_ID_TARGET_COMP_ID = "56"
+FIX_TAG_ID_NO_RELATED_SYM = "146"
 SESSION_LEVEL_TAGS = ['8', '34', '9', '10']
 VERSION_RE = r"8=FIXT*\.([.0-9SP]+)"
 START_OF_BLOCK_CHARACTER = '\u229F '
+INSTRUMENT_BLOCK_ID = "1003"
 
 # cfg key
 CFG_FILE_SECTION_MAIN = "main"
@@ -163,21 +165,22 @@ def get_cfg_for_key(key, default_value):
         return default_value
 
 
+def get_fix_definition_dir():
+    module_path = inspect.getfile(inspect.currentframe())
+    module_dir = os.path.dirname(os.path.abspath(module_path))
+    fix_definition_dir = module_dir + "/" + DEFAULT_FIX_DEFINITIONS_DIR
+
+    return fix_definition_dir
+
+
 def defaults_init():
     if not os.path.exists(DEFAULT_DATA_DIR_PATH):
-        module_path = os.path.realpath(__file__)
-        src_fix_definition_path = os.path.dirname(module_path) + "/" + DEFAULT_FIX_DEFINITIONS_DIR
-        dest_fix_definition_path = DEFAULT_DATA_DIR_PATH + "/" + DEFAULT_FIX_DEFINITIONS_DIR
-        assert shutil.copytree(src_fix_definition_path,
-                               dest_fix_definition_path) == dest_fix_definition_path, \
-            f"Can't copy FIX definitions from {src_fix_definition_path} to {dest_fix_definition_path}"
+        os.makedirs(DEFAULT_DATA_DIR_PATH)
 
     if not os.path.exists(DEFAULT_CFG_FILE_PATH):
-        fix_definition_dir = DEFAULT_DATA_DIR_PATH + "/" + DEFAULT_FIX_DEFINITIONS_DIR
         print(f"Creating default config file:{DEFAULT_CFG_FILE_PATH}... Edit the file as needed.")
         default_cfg = [f"[{CFG_FILE_SECTION_MAIN}]",
                        f"{CFG_FILE_KEY_DATA_DIR_PATH} = {DEFAULT_DATA_DIR_PATH}",
-                       f"{CFG_FILE_KEY_FIX_DEFINITIONS_PATH} = {fix_definition_dir}",
                        f"{CFG_FILE_KEY_FIX_VERSION} = {DEFAULT_FIX_VERSION}",
                        f"{CFG_FILE_KEY_STORE_PATH} = {DEFAULT_STORE_PATH}"
                        f"{CFG_FILE_KEY_LOOKUP_URL_TEMPLATE} = {DEFAULT_LOOKUP_URL_TEMPLATE}",
@@ -268,7 +271,7 @@ def extract_tag_data_from_xml(item: str, tag_names: List) -> List[str]:
 
 
 def path_for_fix_version(version=None, file=None):
-    root_dir = get_cfg_value(CFG_FILE_KEY_FIX_DEFINITIONS_PATH)
+    root_dir = get_fix_definition_dir()
     if version:
         # FIX.4.2 | FIXT.1.1
         path = f"{root_dir}/FIX.{version}/Base"
@@ -341,7 +344,7 @@ def extract_info_for_fix_version(fix_version=DEFAULT_FIX_VERSION) -> FixVersionI
     return fix_version_info
 
 
-# Explanation of the
+# Explanation of the repeating blocks with an example
 # Also see https://www.onixs.biz/fix-dictionary/4.4/compBlock_Parties.html
 # MsgContents.xml contains a description of all blocks and their comprising items
 #   * all items are grouped under the same ComponentID (say 1012)
@@ -393,16 +396,26 @@ def extract_fix_blocks_for_fix_version(fix_version_info: FixVersionInfo) -> None
     blocks = extract_elements_from_file_by_tag_name(fix_version_info.version, "Components.xml", "Component")
     for block in blocks:
         block_id, block_type, name = extract_tag_data_from_xml(block, ['ComponentID', 'ComponentType', 'Name'])
-        if block_type == 'BlockRepeating' or block_type == 'ImplicitBlockRepeating':
+        if block_type == 'BlockRepeating' or block_type == 'ImplicitBlockRepeating' or block_id == INSTRUMENT_BLOCK_ID:
             fix_block = FixBlock(block_id, name, '', '', {})
             fix_version_info.fix_blocks_by_id[block_id] = fix_block
             fix_version_info.fix_blocks_by_name[name] = fix_block
 
+
+    block_ids_to_ignore:Set[str] = set() # another ugly hack for now to handle tag 146/NoRelatedSym
     components = extract_elements_from_file_by_tag_name(fix_version_info.version, "MsgContents.xml", "MsgContent")
     for component in components:
         block_id, tag, indent, position = extract_tag_data_from_xml(component,
                                                                     ['ComponentID', 'TagText', 'Indent', 'Position'])
+        if tag == FIX_TAG_ID_NO_RELATED_SYM:
+            block_ids_to_ignore.add(block_id)
+            continue
+        elif block_id in block_ids_to_ignore:
+            continue
         if block_id in fix_version_info.fix_blocks_by_id:
+            if block_id == INSTRUMENT_BLOCK_ID:
+                indent, position = special_handling_of_instrument_block(fix_version_info, indent, position)
+
             fix_component = FixComponent(block_id, tag, indent, position)
             fix_block = add_fix_component_as_fix_block(fix_version_info, fix_component)
 
@@ -414,6 +427,24 @@ def extract_fix_blocks_for_fix_version(fix_version_info: FixVersionInfo) -> None
 
     add_additional_components_to_blocks(fix_version_info)
     convert_tag_ids_as_name_to_fix_tags(fix_version_info)
+
+
+# We need to handle the Instrument block/component since MsgContents.xml doesn't contain tag 146/NoRelatedSym
+# TODO: find out if I missed anything in the specs
+def special_handling_of_instrument_block(fix_version_info: FixVersionInfo, indent: str, position: str) -> Tuple[
+    str, str]:
+    if position == '1':
+        # artificially insert the tag 146/NoRelatedSym as first position
+        tag = FIX_TAG_ID_NO_RELATED_SYM
+        fix_component = FixComponent(INSTRUMENT_BLOCK_ID, tag, 0, position)
+        fix_block = add_fix_component_as_fix_block(fix_version_info, fix_component)
+        fix_block.count_tag = tag
+        fix_version_info.fix_blocks_by_count_tag[tag] = fix_block
+
+    indent = str(float(indent) + 1)
+    position = str(float(position) + 1)
+
+    return indent, position
 
 
 def add_additional_components_to_blocks(fix_version_info: FixVersionInfo) -> None:
@@ -701,7 +732,7 @@ def create_tag_set(tags_str: str) -> Set[str]:
 
 def create_tag_list(tags_str: str) -> List[int]:
     if tags_str and len(tags_str):
-        tags = [int(x) for x in tags_str.split() if x.isdigit()]
+        tags = [tag for tag in tags_str.split() if tag.isdigit()]
     else:
         tags = []
 
@@ -879,8 +910,8 @@ def convert_delta_into_hhmmssus(delta: timedelta) -> str:
     return sign + delta_in_hhmmssus
 
 
-def display_fix_blocks():
-    for id, fix_block in FixBlock.fix_blocks_by_id.items():
+def display_fix_blocks(fix_version_info: FixVersionInfo):
+    for id, fix_block in fix_version_info.fix_blocks_by_id.items():
         print(f"id:{id}")
         for position, fix_component in fix_block.components_by_position.items():
             print(f"\t{position} -> {fix_component}")
@@ -918,8 +949,9 @@ Cfg = configparser.ConfigParser()
 cfg_init()
 
 if __name__ == '__main__':
-    extract_fix_blocks_for_fix_version(FixVersionInfo("4.4"))
-    display_fix_blocks()
+    fix_version_info = FixVersionInfo("5.0SP2")
+    extract_fix_blocks_for_fix_version(fix_version_info)
+    display_fix_blocks(fix_version_info)
     exit()
 
     all_versions = get_list_of_available_fix_versions()

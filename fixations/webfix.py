@@ -87,25 +87,21 @@ def home():
     return render_template("index.html", **context)
 
 
-def custom_sort_for_top_tags(row: List[str], tags: List[int]) -> Tuple[int, int]:
-    tag_col = row[0]
-    if tag_col.isdecimal():
-        tag_col = int(tag_col)
-        if tag_col in tags:
-            return tags.index(tag_col), 0  # Sort based on index in tags
-    else:
-        tag_col = ''.join(filter(str.isdigit, tag_col))
-    return len(tags), int(tag_col)  # Sort numerically
-
-
 def set_top_rows(req, transpose, rows: List[List[str]]) -> Tuple[List[str], List[List[str]]]:
     top_tags_str = request.cookies.get('top_tags')
     if top_tags_str and not transpose:
         top_tags = create_tag_list(unquote(top_tags_str))
-        sorted_rows_with_top_tags = sorted(rows, key=lambda row: custom_sort_for_top_tags(row, top_tags))
-        top_tags = [str(tag) for tag in top_tags]
+        top_tags_row = []
+        non_top_tags_row = []
+        for row in rows:
+            tag_col = row[0]
+            if tag_col in top_tags:
+                top_tags_row.append(row)
+            else:
+                non_top_tags_row.append(row)
+        all_rows = top_tags_row + non_top_tags_row
 
-        return top_tags, sorted_rows_with_top_tags
+        return top_tags, all_rows
     else:
         return [], rows
 
