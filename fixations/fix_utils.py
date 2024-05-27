@@ -24,11 +24,9 @@ DEFAULT_FIX_VERSION = "4.2"
 FIX_TAG_ID_SENDING_TIME = "52"
 FIX_TAG_ID_SENDER_COMP_ID = "49"
 FIX_TAG_ID_TARGET_COMP_ID = "56"
-FIX_TAG_ID_NO_RELATED_SYM = "146"
 SESSION_LEVEL_TAGS = ['8', '34', '9', '10']
 VERSION_RE = r"8=FIXT*\.([.0-9SP]+)"
 START_OF_BLOCK_CHARACTER = '\u229F '
-INSTRUMENT_BLOCK_ID = "1003"
 
 # cfg key
 CFG_FILE_SECTION_MAIN = "main"
@@ -396,26 +394,16 @@ def extract_fix_blocks_for_fix_version(fix_version_info: FixVersionInfo) -> None
     blocks = extract_elements_from_file_by_tag_name(fix_version_info.version, "Components.xml", "Component")
     for block in blocks:
         block_id, block_type, name = extract_tag_data_from_xml(block, ['ComponentID', 'ComponentType', 'Name'])
-        if block_type == 'BlockRepeating' or block_type == 'ImplicitBlockRepeating' or block_id == INSTRUMENT_BLOCK_ID:
+        if block_type == 'BlockRepeating' or block_type == 'ImplicitBlockRepeating':
             fix_block = FixBlock(block_id, name, '', '', {})
             fix_version_info.fix_blocks_by_id[block_id] = fix_block
             fix_version_info.fix_blocks_by_name[name] = fix_block
 
-
-    block_ids_to_ignore:Set[str] = set() # another ugly hack for now to handle tag 146/NoRelatedSym
     components = extract_elements_from_file_by_tag_name(fix_version_info.version, "MsgContents.xml", "MsgContent")
     for component in components:
         block_id, tag, indent, position = extract_tag_data_from_xml(component,
                                                                     ['ComponentID', 'TagText', 'Indent', 'Position'])
-        if tag == FIX_TAG_ID_NO_RELATED_SYM:
-            block_ids_to_ignore.add(block_id)
-            continue
-        elif block_id in block_ids_to_ignore:
-            continue
         if block_id in fix_version_info.fix_blocks_by_id:
-            if block_id == INSTRUMENT_BLOCK_ID:
-                indent, position = special_handling_of_instrument_block(fix_version_info, indent, position)
-
             fix_component = FixComponent(block_id, tag, indent, position)
             fix_block = add_fix_component_as_fix_block(fix_version_info, fix_component)
 
@@ -427,24 +415,6 @@ def extract_fix_blocks_for_fix_version(fix_version_info: FixVersionInfo) -> None
 
     add_additional_components_to_blocks(fix_version_info)
     convert_tag_ids_as_name_to_fix_tags(fix_version_info)
-
-
-# We need to handle the Instrument block/component since MsgContents.xml doesn't contain tag 146/NoRelatedSym
-# TODO: find out if I missed anything in the specs
-def special_handling_of_instrument_block(fix_version_info: FixVersionInfo, indent: str, position: str) -> Tuple[
-    str, str]:
-    if position == '1':
-        # artificially insert the tag 146/NoRelatedSym as first position
-        tag = FIX_TAG_ID_NO_RELATED_SYM
-        fix_component = FixComponent(INSTRUMENT_BLOCK_ID, tag, 0, position)
-        fix_block = add_fix_component_as_fix_block(fix_version_info, fix_component)
-        fix_block.count_tag = tag
-        fix_version_info.fix_blocks_by_count_tag[tag] = fix_block
-
-    indent = str(float(indent) + 1)
-    position = str(float(position) + 1)
-
-    return indent, position
 
 
 def add_additional_components_to_blocks(fix_version_info: FixVersionInfo) -> None:
