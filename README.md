@@ -47,6 +47,36 @@ The data is extracted from the FIX specs available here:
 
 NOTE: it requires the creation of a login/password to access it.
 
+### Updating the FIX references
+Every so often the https://www.fixtrading.org website will issue an *extension pack*, i.e. an update to their FIX reference for FIX 5.0SP2
+
+The list of *extension packs* can be found here
+> https://www.fixtrading.org/extension-packs/
+
+That's where one can find a pointer to an EP download button that points to something like:
+> https://www.fixtrading.org/packages/ep287/
+
+Within it, one needs to download the matching ZIP file:
+> FIXBasicRepository_FIX.Latest_EP287.zip
+
+Which can be unzip to reveal a directory called *Basic* which contains the same XML file **Fixations** requires:
+```commandline
+unzip -v FIXBasicRepository_FIX.Latest_EP287.zip | grep Basic |grep xml
+   78310  Defl:N     8753  89% 02-06-2024 10:32 579086ea  Basic/Abbreviations.xml
+   12902  Defl:N     1432  89% 02-06-2024 10:32 719a08e3  Basic/Categories.xml
+  395051  Defl:N    36228  91% 02-06-2024 10:32 1936d9af  Basic/Components.xml
+   33163  Defl:N     5675  83% 02-06-2024 10:32 7efbdd59  Basic/Datatypes.xml
+ 1554894  Defl:N   194377  88% 02-06-2024 10:34 4def9e3d  Basic/Enums.xml
+ 2269559  Defl:N   266814  88% 02-06-2024 10:32 7fe17774  Basic/Fields.xml
+ 8187931  Defl:N   745380  91% 02-06-2024 10:34 75dc5b17  Basic/IntermediateRepository.xml
+  105161  Defl:N    17924  83% 02-06-2024 10:32 348735e8  Basic/Messages.xml
+ 3144399  Defl:N   213711  93% 02-06-2024 10:32 8c5d516a  Basic/MsgContents.xml
+    2230  Defl:N      739  67% 02-06-2024 10:32 e6dc9b4e  Basic/Sections.xml
+```
+You need to `cp` those files into `fixations/fix_repository_2010_edition_20200402/FIX.5.0SP2/Base`. Note the `Base` vs `Basic` directory.
+
+Note: I will try to keep an eye on new *extension packs* and update this repo accordingly
+
 ## TODO:
  1. create a hyperlink to FIX specs for each tag based on FIX version :white_check_mark:
  2. add more info to README.md. Use rule80A and 47 as example for fix_args :white_check_mark:

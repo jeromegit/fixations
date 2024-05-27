@@ -1,21 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?><!--
-DISCLAIMER
-
-THE INFORMATION CONTAINED HEREIN AND THE FINANCIAL INFORMATION EXCHANGE PROTOCOL (COLLECTIVELY, THE "FIX PROTOCOL") ARE PROVIDED "AS IS" AND NO PERSON OR ENTITY ASSOCIATED WITH THE FIX PROTOCOL MAKES ANY REPRESENTATION OR WARRANTY, EXPRESS OR IMPLIED, AS TO THE FIX PROTOCOL (OR THE RESULTS TO BE OBTAINED BY THE USE THEREOF) OR ANY OTHER MATTER AND EACH SUCH PERSON AND ENTITY SPECIFICALLY DISCLAIMS ANY WARRANTY OF ORIGINALITY, ACCURACY, COMPLETENESS, MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. SUCH PERSONS AND ENTITIES DO NOT WARRANT THAT THE FIX PROTOCOL WILL CONFORM TO ANY DESCRIPTION THEREOF OR BE FREE OF ERRORS. THE ENTIRE RISK OF ANY USE OF THE FIX PROTOCOL IS ASSUMED BY THE USER.
-
-NO PERSON OR ENTITY ASSOCIATED WITH THE FIX PROTOCOL SHALL HAVE ANY LIABILITY FOR DAMAGES OF ANY KIND ARISING IN ANY MANNER OUT OF OR IN CONNECTION WITH ANY USER'S USE OF (OR ANY INABILITY TO USE) THE FIX PROTOCOL, WHETHER DIRECT, INDIRECT, INCIDENTAL, SPECIAL OR CONSEQUENTIAL (INCLUDING, WITHOUT LIMITATION, LOSS OF DATA, LOSS OF USE, CLAIMS OF THIRD PARTIES OR LOST PROFITS OR REVENUES OR OTHER ECONOMIC LOSS), WHETHER IN TORT (INCLUDING NEGLIGENCE AND STRICT LIABILITY), CONTRACT OR OTHERWISE, WHETHER OR NOT ANY SUCH PERSON OR ENTITY HAS BEEN ADVISED OF, OR OTHERWISE MIGHT HAVE ANTICIPATED THE POSSIBILITY OF, SUCH DAMAGES.
-
-No proprietary or ownership interest of any kind is granted with respect to the FIX Protocol (or any rights therein).
-
-Copyright 2003-2009 FIX Protocol Limited, all rights reserved
-
-REPRODUCTION
-
-FIX Protocol Limited grants permission to print in hard copy form or reproduce the FIX Protocol specification in its entirety provided that the duplicated pages retain the "Copyright FIX Protocol Limited" statement at the bottom of the page.
-
-Portions of the FIX Protocol specification may be extracted or cited in other documents (such as a document which describes one's implementation of the FIX Protocol) provided that one reference the origin of the FIX Protocol specification (HTUhttp://www.fixprotocol.orgUTH) and that the specification itself is "Copyright FIX Protocol Limited".
-FIX Protocol Limited claims no intellectual property over one's implementation (programming code) of an application which implements the behavior and details from the FIX Protocol specification. 	
---><Categories xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" copyright="Copyright (c) FIX Protocol Ltd. All Rights Reserved." edition="2010" version="FIX.5.0SP2" xsi:noNamespaceSchemaLocation="../../schema/Categories.xsd" generated="2010-05-20T02:32:05.181-04:00" latestEP="97">
+<?xml version="1.0" encoding="utf-8"?>
+<Categories xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            copyright="Copyright (c) FIX Protocol Ltd. All Rights Reserved."
+            edition="2010"
+            version="FIX.Latest"
+            xsi:noNamespaceSchemaLocation="../../schema/Categories.xsd"
+            generated="2023-09-18T15:02:42.458Z"
+            latestEP="281">
    <Category>
       <CategoryID>Session</CategoryID>
       <FIXMLFileName>session</FIXMLFileName>
@@ -115,7 +105,7 @@ FIX Protocol Limited claims no intellectual property over one's implementation (
       <Volume>3</Volume>
       <IncludeFile>components</IncludeFile>
    </Category>
-   <!--DELETED Category identified by CategoryID='MarketStructure'--><!--DELETED Category identified by CategoryID='ReferenceData'--><Category>
+   <Category>
       <CategoryID>Common</CategoryID>
       <FIXMLFileName>components</FIXMLFileName>
       <NotReqXML>0</NotReqXML>
@@ -269,5 +259,76 @@ FIX Protocol Limited claims no intellectual property over one's implementation (
       <SectionID>PreTrade</SectionID>
       <Volume>3</Volume>
       <IncludeFile>components</IncludeFile>
+   </Category>
+   <Category added="FIX.5.0SP2" addedEP="102">
+      <CategoryID>MarginRequirementManagement</CategoryID>
+      <FIXMLFileName>marginrequirement</FIXMLFileName>
+      <NotReqXML>0</NotReqXML>
+      <GenerateImplFile>1</GenerateImplFile>
+      <ComponentType>Message</ComponentType>
+      <SectionID>PostTrade</SectionID>
+      <Volume>5</Volume>
+      <IncludeFile>components</IncludeFile>
+   </Category>
+   <Category added="FIX.5.0SP2" addedEP="105">
+      <CategoryID>PartiesReferenceData</CategoryID>
+      <FIXMLFileName>partiesreference</FIXMLFileName>
+      <NotReqXML>0</NotReqXML>
+      <GenerateImplFile>1</GenerateImplFile>
+      <ComponentType>Message</ComponentType>
+      <SectionID>PreTrade</SectionID>
+      <Volume>3</Volume>
+      <IncludeFile>components</IncludeFile>
+   </Category>
+   <Category added="FIX.5.0SP2" addedEP="117">
+      <CategoryID>AccountReporting</CategoryID>
+      <FIXMLFileName>accountreporting</FIXMLFileName>
+      <NotReqXML>0</NotReqXML>
+      <GenerateImplFile>1</GenerateImplFile>
+      <ComponentType>Message</ComponentType>
+      <SectionID>PostTrade</SectionID>
+      <Volume>5</Volume>
+      <IncludeFile>components</IncludeFile>
+      <Description>Account Reporting</Description>
+   </Category>
+   <Category added="FIX.5.0SP2" addedEP="171">
+      <CategoryID>PartiesAction</CategoryID>
+      <FIXMLFileName>partiesaction</FIXMLFileName>
+      <NotReqXML>0</NotReqXML>
+      <GenerateImplFile>1</GenerateImplFile>
+      <ComponentType>Message</ComponentType>
+      <SectionID>PreTrade</SectionID>
+      <Volume>3</Volume>
+      <IncludeFile>components</IncludeFile>
+      <Description>The PartiesAction category of messages is a set of messages that are used to take an action on party information as a result of risk management decisions made during the trading day.</Description>
+   </Category>
+   <Category added="FIX.5.0SP2" addedEP="247">
+      <CategoryID>TradeManagement</CategoryID>
+      <FIXMLFileName>trademanagement</FIXMLFileName>
+      <NotReqXML>0</NotReqXML>
+      <GenerateImplFile>1</GenerateImplFile>
+      <ComponentType>Message</ComponentType>
+      <SectionID>PostTrade</SectionID>
+      <IncludeFile>components</IncludeFile>
+   </Category>
+   <Category added="FIX.5.0SP2" addedEP="249">
+      <CategoryID>PayManagement</CategoryID>
+      <FIXMLFileName>paymgt</FIXMLFileName>
+      <NotReqXML>0</NotReqXML>
+      <GenerateImplFile>1</GenerateImplFile>
+      <ComponentType>Message</ComponentType>
+      <SectionID>PostTrade</SectionID>
+      <IncludeFile>components</IncludeFile>
+      <Description>Messages used to initiate and confirm expected or future payments to be made or received related to servicing of contracts or transactions after trade settlement.  These messages are not intended to instruct or initiate remittance of funds transfers with banks.</Description>
+   </Category>
+   <Category added="FIX.Latest" addedEP="281">
+      <CategoryID>SettlementStatusManagement</CategoryID>
+      <FIXMLFileName>settlstatmgmt</FIXMLFileName>
+      <NotReqXML>0</NotReqXML>
+      <GenerateImplFile>1</GenerateImplFile>
+      <ComponentType>Message</ComponentType>
+      <SectionID>PostTrade</SectionID>
+      <IncludeFile>components</IncludeFile>
+      <Description>Messages used to request for or communicate securities settlement status once the settlement process has been initiated via existing industry norms. These messages are not intended to instruct or initiate securities settlement process.</Description>
    </Category>
 </Categories>
