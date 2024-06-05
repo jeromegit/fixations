@@ -9,7 +9,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from functools import cache
+from functools import lru_cache
 from importlib.metadata import version
 from string import Template
 from typing import Dict, Union, List, Tuple, Set
@@ -88,7 +88,7 @@ class FixBlock:
     count_tag: str  # to be used as block's common tag
     start_tag: str  # to be used as start of block
     components_by_position: Dict[str, FixComponent] = field(default_factory=dict)
-    tag_ids: set[str] = field(default_factory=set)
+    tag_ids: Set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -309,7 +309,7 @@ def extract_elements_from_file_by_tag_name(fix_version, file, tag_name) -> NodeL
         return elements
 
 
-@cache
+@lru_cache()
 def extract_info_for_fix_version(fix_version=DEFAULT_FIX_VERSION) -> FixVersionInfo:
     available_versions = get_list_of_available_fix_versions()
     assert fix_version in available_versions, f"The specified FIX version:{fix_version} is not valid. Use one of these {available_versions}"
@@ -639,7 +639,7 @@ def extract_version_from_first_fix_line(str_fix_lines):
     return None
 
 
-def get_fix_tag_value_from_fix_tags(tag_id: str, fix_tags: dict[str, str]) -> Union[str, None]:
+def get_fix_tag_value_from_fix_tags(tag_id: str, fix_tags: Dict[str, str]) -> Union[str, None]:
     if fix_tags:
         if tag_id in fix_tags:
             return fix_tags[tag_id]
@@ -709,7 +709,7 @@ def create_tag_list(tags_str: str) -> List[int]:
     return tags
 
 
-def obfuscate_lines(lines: List[str], obfuscate_tags: set[str]) -> List[str]:
+def obfuscate_lines(lines: List[str], obfuscate_tags: Set[str]) -> List[str]:
     obfuscate_lines = list()
     for line in lines:
         obfuscate_lines.append(obfuscate_tag_values_in_line(line, obfuscate_tags))
@@ -717,7 +717,7 @@ def obfuscate_lines(lines: List[str], obfuscate_tags: set[str]) -> List[str]:
     return obfuscate_lines
 
 
-def obfuscate_tag_values_in_line(line: str, obfuscate_tags: set[str]) -> None:
+def obfuscate_tag_values_in_line(line: str, obfuscate_tags: Set[str]) -> None:
     line_prefix, kv_parts, separator, comment, command = get_kv_parts_from_line(line)
 
     obfuscated_kvs: List = list()
@@ -926,7 +926,7 @@ if __name__ == '__main__':
 
     all_versions = get_list_of_available_fix_versions()
     print("\n".join(all_versions))
-    tag_dict = extract_tag_dict_for_fix_version("4.2")
+    tag_dict = extract_info_for_fix_version("4.2")
     json_file_path = "/tmp/fix_tags.json"
     save_tag_dict_to_json_file(tag_dict, json_file_path)
     tag_dict = load_tag_dict_from_json_file(json_file_path)
