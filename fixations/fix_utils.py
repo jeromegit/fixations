@@ -88,7 +88,7 @@ class FixBlock:
     count_tag: str  # to be used as block's common tag
     start_tag: str  # to be used as start of block
     components_by_position: Dict[str, FixComponent] = field(default_factory=dict)
-    tag_ids: set[str] = field(default_factory=set)
+    tag_ids: Set[str] = field(default_factory=set)
 
 
 @dataclass
