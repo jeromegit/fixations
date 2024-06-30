@@ -14,13 +14,14 @@ from importlib.metadata import version
 from string import Template
 from typing import Dict, Union, List, Tuple, Set
 from xml.dom.minicompat import NodeList
-from xml.dom.minidom import parse
+from xml.dom.minidom import parse, Element
 
 import requests as requests
 import tabulate
 from dataclasses_json import dataclass_json
 
 DEFAULT_FIX_VERSION = "4.2"
+FIX_VERSION_1_1 = "1.1"
 FIX_TAG_ID_SENDING_TIME = "52"
 FIX_TAG_ID_SENDER_COMP_ID = "49"
 FIX_TAG_ID_TARGET_COMP_ID = "56"
@@ -68,6 +69,8 @@ class FixTag:
     name: str
     type: str
     desc: str
+    version_added: str
+    version_deprecated: str
     values: Dict[str, FixTagValue] = field(default_factory=dict)
 
 
@@ -196,7 +199,8 @@ def extract_additional_fixtags_from_text(text: str) -> Dict[str, FixTag]:
         key_value_match = re.search(r'^\s*(\d+)\s*=\s*(\S+)', line)
         if key_value_match:
             key, value = key_value_match.groups()
-            additional_tags_dict[key] = FixTag(key, value, 'String', f"N/A for tag:{key} / value:{value}", {})
+            additional_tags_dict[key] = FixTag(key, value, 'String', f"N/A for tag:{key} / value:{value}", "Add'l",
+                                               "Add'l", {})
 
     return additional_tags_dict
 
@@ -248,7 +252,7 @@ def get_xml_text(nodelist):
 
 
 def extract_tag_data_from_xml_field(field):
-    return extract_tag_data_from_xml(field, ['Tag', 'Name', 'Type', 'Description'])
+    return extract_tag_data_from_xml(field, ['Tag', 'Name', 'Type', 'Description'], ['added', 'deprecated'])
 
 
 def extract_tag_data_from_xml_enum(enum):
@@ -259,11 +263,16 @@ def extract_tag_data_from_xml_msg_content(msg_content):
     return extract_tag_data_from_xml(msg_content, ['ComponentID', 'TagText', 'Indent', 'Position'])
 
 
-def extract_tag_data_from_xml(item: str, tag_names: List) -> List[str]:
+def extract_tag_data_from_xml(item: Element, tag_names: List[str], tag_attributes: Union[None, List[str]] = None) -> \
+List[str]:
     data = []
     for tag_name in tag_names:
         value = get_xml_text(item.getElementsByTagName(tag_name)[0].childNodes)
         data.append(value)
+
+    if tag_attributes:
+        for tag_attribute in tag_attributes:
+            data.append(item.getAttribute(tag_attribute))
 
     return data
 
@@ -283,17 +292,19 @@ def path_for_fix_version(version=None, file=None):
     return path
 
 
-def get_list_of_available_fix_versions()->List[str]:
+def get_list_of_available_fix_versions(include_fix_version_1_1: bool = True) -> List[str]:
     root_path = path_for_fix_version()
     root_dir = pathlib.Path(root_path)
-    versions = []
+    fix_versions = []
     for entry in root_dir.glob("FIX*"):
         if os.path.isdir(entry):
             dir_name = os.path.basename(entry)
             version_match = re.search(r"FIXT*\.(.*)", dir_name)
-            versions.append(version_match.group(1))
+            fix_version = version_match.group(1)
+            if include_fix_version_1_1 or fix_version != FIX_VERSION_1_1:
+                fix_versions.append(fix_version)
 
-    return sorted(versions)
+    return sorted(fix_versions)
 
 
 def extract_elements_from_file_by_tag_name(fix_version, file, tag_name) -> NodeList:
@@ -318,8 +329,9 @@ def extract_info_for_fix_version(fix_version=DEFAULT_FIX_VERSION) -> FixVersionI
     # Extract all FIX tags from Fields XML file
     fields = extract_elements_from_file_by_tag_name(fix_version, "Fields.xml", "Field")
     for field_ in fields:
-        tag_id, name, tag_type, desc = extract_tag_data_from_xml_field(field_)
-        fix_version_info.fix_tags_by_tag_id[tag_id] = FixTag(tag_id, name, tag_type, desc, {})
+        tag_id, name, tag_type, desc, version_added, version_deprecated = extract_tag_data_from_xml_field(field_)
+        fix_version_info.fix_tags_by_tag_id[tag_id] = FixTag(tag_id, name, tag_type, desc, version_added,
+                                                             version_deprecated, {})
 
     # Extract all FIX tag values from Enums XML file and attach them to the tag dictionary
     enums = extract_elements_from_file_by_tag_name(fix_version, "Enums.xml", "Enum")
@@ -710,14 +722,14 @@ def create_tag_list(tags_str: str) -> List[int]:
 
 
 def obfuscate_lines(lines: List[str], obfuscate_tags: Set[str]) -> List[str]:
-    obfuscate_lines = list()
+    obfuscate_lines: List[str] = []
     for line in lines:
         obfuscate_lines.append(obfuscate_tag_values_in_line(line, obfuscate_tags))
 
     return obfuscate_lines
 
 
-def obfuscate_tag_values_in_line(line: str, obfuscate_tags: Set[str]) -> None:
+def obfuscate_tag_values_in_line(line: str, obfuscate_tags: Set[str]) -> str:
     line_prefix, kv_parts, separator, comment, command = get_kv_parts_from_line(line)
 
     obfuscated_kvs: List = list()
