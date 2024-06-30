@@ -283,7 +283,7 @@ def path_for_fix_version(version=None, file=None):
     return path
 
 
-def get_list_of_available_fix_versions():
+def get_list_of_available_fix_versions()->List[str]:
     root_path = path_for_fix_version()
     root_dir = pathlib.Path(root_path)
     versions = []
@@ -293,7 +293,7 @@ def get_list_of_available_fix_versions():
             version_match = re.search(r"FIXT*\.(.*)", dir_name)
             versions.append(version_match.group(1))
 
-    return versions
+    return sorted(versions)
 
 
 def extract_elements_from_file_by_tag_name(fix_version, file, tag_name) -> NodeList:
