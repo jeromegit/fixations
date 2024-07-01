@@ -8,18 +8,9 @@ from typing import Dict, List, Tuple, Union, Set
 from tabulate import tabulate
 
 from fixations.fix_utils import extract_info_for_fix_version, get_list_of_available_fix_versions, \
-    FixVersionInfo, FixTag
+    FixVersionInfo, FixTag, FIX_VERSION_ALL, FixTagValueClash
 
 TABULATE_DEFAULT_FORMAT = 'grid'
-
-
-@dataclass
-class FixTagValueClash:
-    fix_tag_id: str
-    value: str
-    name: str
-    fix_version: str
-    fix_version_name: str
 
 
 def validate_fix_versions(fix_versions_csv: str) -> List[str]:
@@ -63,8 +54,7 @@ def show_tags_across_versions(fix_versions: Union[None, List[str]] = None, fix_t
 
     versions_for_tags: List[List[str]] = []
     for fix_tag in sorted(all_fix_tags_across_all_versions.values(), key=lambda fix_tag: int(fix_tag.id)):
-        versions_for_tag: List[str] = [fix_tag.id, fix_tag.name, fix_tag.type, fix_tag.version_added,
-                                       fix_tag.version_deprecated]
+        versions_for_tag: List[str] = [fix_tag.id, fix_tag.name, fix_tag.type]
         for fix_version in fix_versions:
             if fix_tag.id in fix_version_infos[fix_version].fix_tags_by_tag_id:
                 values = fix_version_infos[fix_version].fix_tags_by_tag_id[fix_tag.id].values.values()
@@ -77,29 +67,8 @@ def show_tags_across_versions(fix_versions: Union[None, List[str]] = None, fix_t
                 versions_for_tag.append(' ')
         versions_for_tags.append(versions_for_tag)
 
-    print(tabulate(versions_for_tags, headers=['TAG_ID', 'NAME', 'TYPE', 'ADDED', 'DEPRECATED'] + fix_versions,
+    print(tabulate(versions_for_tags, headers=['TAG_ID', 'NAME', 'TYPE'] + fix_versions,
                    tablefmt=grid_style))
-
-
-def add_tag_values_from_all_versions(fix_versions: List[str],
-                                     fix_version_infos: Dict[str, FixVersionInfo],
-                                     all_versions_fix_tag: FixTag) -> List[FixTagValueClash]:
-    fix_tag_value_clashes: List[FixTagValueClash] = []
-    fix_tag_id = all_versions_fix_tag.id
-    for fix_version in fix_versions:
-        if fix_tag_id in fix_version_infos[fix_version].fix_tags_by_tag_id:
-            version_values = fix_version_infos[fix_version].fix_tags_by_tag_id[fix_tag_id].values.values()
-            if version_values:
-                for version_value in version_values:
-                    value = version_value.value
-                    if value in all_versions_fix_tag.values:
-                        if version_value.name != all_versions_fix_tag.values[value].name:
-                            fix_tag_value_clashes.append(
-                                FixTagValueClash(fix_tag_id, value, all_versions_fix_tag.values[value].name,
-                                                 fix_version, version_value.name))
-                    all_versions_fix_tag.values[value] = version_value
-
-    return fix_tag_value_clashes
 
 
 def print_all_fix_tag_value_clashes(all_fix_tag_value_clashes: List[FixTagValueClash]) -> None:
@@ -114,25 +83,37 @@ def print_all_fix_tag_value_clashes(all_fix_tag_value_clashes: List[FixTagValueC
                        tablefmt='psql'), file=sys.stderr)
 
 
-def generate_all_info() -> None:
-    fix_versions = get_list_of_available_fix_versions(include_fix_version_1_1=False)
-    fix_version_infos, all_fix_tags_across_all_versions = get_tags_and_infos_for_versions(fix_versions, None)
+def sort_by_tag_ids_and_values(fix_tags_by_tag_id: Dict[str, FixTag]) -> Dict[str, FixTag]:
+    sorted_fix_tags_by_tag_id: Dict[str, FixTag] = {}
+    for fix_tag_id in sorted(fix_tags_by_tag_id, key=int):
+        fix_tag = fix_tags_by_tag_id[fix_tag_id]
+        fix_tag.values = {v.value: v for v in sorted(fix_tag.values.values(), key=lambda v: v.value)}
+        sorted_fix_tags_by_tag_id[fix_tag_id] = fix_tag
 
+    return sorted_fix_tags_by_tag_id
+
+
+def merge_fix_versions(fix_versions: List[str]) -> Tuple[FixVersionInfo, List[FixTagValueClash]]:
+    all_versions_info: FixVersionInfo = extract_info_for_fix_version(fix_versions[0])
+    all_versions_info.version = FIX_VERSION_ALL
     all_fix_tag_value_clashes: List[FixTagValueClash] = []
-    all_versions_fix_tags_by_tag_id: Dict[str, FixTag] = {}
-    for fix_tag in sorted(all_fix_tags_across_all_versions.values(), key=lambda fix_tag: int(fix_tag.id)):
-        all_versions_fix_tag = fix_tag
-        fix_tag_value_clashes = add_tag_values_from_all_versions(fix_versions, fix_version_infos, all_versions_fix_tag)
+    for fix_version in fix_versions[1:]:
+        fix_version_info = extract_info_for_fix_version(fix_version)
+        fix_tag_value_clashes = all_versions_info.merge_with_other_fix_version_info(fix_version_info)
         all_fix_tag_value_clashes.extend(fix_tag_value_clashes)
 
-        if all_versions_fix_tag.values:
-            values = all_versions_fix_tag.values
-            sorted_values = {k: values[k] for k in sorted(values)}
-            all_versions_fix_tag.values = sorted_values
+    all_versions_info.fix_tags_by_tag_id = sort_by_tag_ids_and_values(all_versions_info.fix_tags_by_tag_id)
 
-        all_versions_fix_tags_by_tag_id[fix_tag.id] = all_versions_fix_tag
+    return all_versions_info, all_fix_tag_value_clashes
+
+
+def generate_all_info() -> None:
+    fix_versions = get_list_of_available_fix_versions(include_fix_version_1_1=False)
+
+    all_versions_info, all_fix_tag_value_clashes = merge_fix_versions(fix_versions)
     print_all_fix_tag_value_clashes(all_fix_tag_value_clashes)
-    json_str = json.dumps(all_versions_fix_tags_by_tag_id, default=lambda o: o.to_dict(), indent=2)
+
+    json_str = json.dumps(all_versions_info.fix_tags_by_tag_id, default=lambda o: o.to_dict(), indent=2)
     print(json_str)
 
 

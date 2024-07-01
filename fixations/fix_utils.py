@@ -22,6 +22,7 @@ from dataclasses_json import dataclass_json
 
 DEFAULT_FIX_VERSION = "4.2"
 FIX_VERSION_1_1 = "1.1"
+FIX_VERSION_ALL = "ALL_VERSIONS"
 FIX_TAG_ID_SENDING_TIME = "52"
 FIX_TAG_ID_SENDER_COMP_ID = "49"
 FIX_TAG_ID_TARGET_COMP_ID = "56"
@@ -69,8 +70,6 @@ class FixTag:
     name: str
     type: str
     desc: str
-    version_added: str
-    version_deprecated: str
     values: Dict[str, FixTagValue] = field(default_factory=dict)
 
 
@@ -95,6 +94,15 @@ class FixBlock:
 
 
 @dataclass
+class FixTagValueClash:
+    fix_tag_id: str
+    value: str
+    name: str
+    fix_version: str
+    fix_version_name: str
+
+
+@dataclass
 class FixVersionInfo:
     version: str
     fix_tags_by_tag_id: Dict[str, FixTag] = field(default_factory=dict)
@@ -102,6 +110,36 @@ class FixVersionInfo:
     fix_blocks_by_id: Dict[str, 'FixBlock'] = field(default_factory=dict)
     fix_blocks_by_name: Dict[str, 'FixBlock'] = field(default_factory=dict)
     fix_blocks_by_count_tag: Dict[str, 'FixBlock'] = field(default_factory=dict)
+
+    def merge_fix_tags_by_id(self, other_fix_version_info: 'FixVersionInfo') -> List[FixTagValueClash]:
+        fix_tag_value_clashes: List[FixTagValueClash] = []
+        for fix_tag_id, other_fix_tag in other_fix_version_info.fix_tags_by_tag_id.items():
+            if fix_tag_id in self.fix_tags_by_tag_id:
+                self_fix_tag = self.fix_tags_by_tag_id[fix_tag_id]
+                # use the fields of other (assumed newer) version as starting point
+                # except for the values which are taken from the existing one
+                merged_fix_tag = FixTag(other_fix_tag.id, other_fix_tag.name, other_fix_tag.type, other_fix_tag.desc,
+                                        self_fix_tag.values)
+                other_values = other_fix_tag.values
+                for other_value in other_values.values():
+                    value = other_value.value
+                    if value in merged_fix_tag.values:
+                        if other_value.name != merged_fix_tag.values[value].name:
+                            fix_tag_value_clashes.append(
+                                FixTagValueClash(fix_tag_id, value, merged_fix_tag.values[value].name,
+                                                 other_fix_version_info.version, other_value.name))
+                    merged_fix_tag.values[value] = other_value
+
+                self.fix_tags_by_tag_id[fix_tag_id] = merged_fix_tag
+            else:
+                self.fix_tags_by_tag_id[fix_tag_id] = other_fix_tag
+
+        return fix_tag_value_clashes
+
+    def merge_with_other_fix_version_info(self, other_fix_version_info: 'FixVersionInfo') -> List[FixTagValueClash]:
+        fix_tag_value_clashes: List[FixTagValueClash] = self.merge_fix_tags_by_id(other_fix_version_info)
+
+        return fix_tag_value_clashes
 
 
 # Caches
@@ -199,8 +237,7 @@ def extract_additional_fixtags_from_text(text: str) -> Dict[str, FixTag]:
         key_value_match = re.search(r'^\s*(\d+)\s*=\s*(\S+)', line)
         if key_value_match:
             key, value = key_value_match.groups()
-            additional_tags_dict[key] = FixTag(key, value, 'String', f"N/A for tag:{key} / value:{value}", "Add'l",
-                                               "Add'l", {})
+            additional_tags_dict[key] = FixTag(key, value, 'String', f"N/A for tag:{key} / value:{value}", {})
 
     return additional_tags_dict
 
@@ -252,7 +289,7 @@ def get_xml_text(nodelist):
 
 
 def extract_tag_data_from_xml_field(field):
-    return extract_tag_data_from_xml(field, ['Tag', 'Name', 'Type', 'Description'], ['added', 'deprecated'])
+    return extract_tag_data_from_xml(field, ['Tag', 'Name', 'Type', 'Description'])
 
 
 def extract_tag_data_from_xml_enum(enum):
@@ -321,6 +358,27 @@ def extract_elements_from_file_by_tag_name(fix_version, file, tag_name) -> NodeL
 
 
 @lru_cache()
+def extract_info_for_all_fix_versions() -> FixVersionInfo:
+    fix_version = FIX_VERSION_ALL
+    fix_version_info = FixVersionInfo(fix_version)
+
+    all_versions_json_file_path = '/tmp/all_versions_data.json'
+    with open(all_versions_json_file_path, 'r') as file:
+        json_data = json.load(file)
+
+    fix_version_info.fix_tags_by_tag_id = {fix_tag_id: FixTag.from_dict(fix_tag_data) for fix_tag_id, fix_tag_data in
+                                           json_data.items()}
+
+    additional_tag_dict = check_for_additional_fix_definitions()
+    if len(additional_tag_dict):
+        add_additional_tag_dict(additional_tag_dict, fix_version_info.fix_tags_by_tag_id)
+
+    #    extract_fix_blocks_for_fix_version(fix_version_info)
+
+    return fix_version_info
+
+
+@lru_cache()
 def extract_info_for_fix_version(fix_version=DEFAULT_FIX_VERSION) -> FixVersionInfo:
     available_versions = get_list_of_available_fix_versions()
     assert fix_version in available_versions, f"The specified FIX version:{fix_version} is not valid. Use one of these {available_versions}"
@@ -329,9 +387,8 @@ def extract_info_for_fix_version(fix_version=DEFAULT_FIX_VERSION) -> FixVersionI
     # Extract all FIX tags from Fields XML file
     fields = extract_elements_from_file_by_tag_name(fix_version, "Fields.xml", "Field")
     for field_ in fields:
-        tag_id, name, tag_type, desc, version_added, version_deprecated = extract_tag_data_from_xml_field(field_)
-        fix_version_info.fix_tags_by_tag_id[tag_id] = FixTag(tag_id, name, tag_type, desc, version_added,
-                                                             version_deprecated, {})
+        tag_id, name, tag_type, desc = extract_tag_data_from_xml_field(field_)
+        fix_version_info.fix_tags_by_tag_id[tag_id] = FixTag(tag_id, name, tag_type, desc, {})
 
     # Extract all FIX tag values from Enums XML file and attach them to the tag dictionary
     enums = extract_elements_from_file_by_tag_name(fix_version, "Enums.xml", "Enum")
@@ -931,7 +988,19 @@ Cfg = configparser.ConfigParser()
 cfg_init()
 
 if __name__ == '__main__':
-    fix_version_info = FixVersionInfo("5.0SP2")
+    # TODO: extract_info_for_all_fix_versions needs more test
+    start_time = time.perf_counter()
+    fix_version_info = extract_info_for_all_fix_versions()
+    print(f"Elapsed time: {time.perf_counter() - start_time} seconds")
+
+    start_time = time.perf_counter()
+    fix_version_info_50 = extract_info_for_fix_version('5.0SP2')
+    print(f"Elapsed time: {time.perf_counter() - start_time} seconds")
+    exit()
+
+    fix_version_info_50 = FixVersionInfo("5.0SP2")
+    exit()
+
     extract_fix_blocks_for_fix_version(fix_version_info)
     display_fix_blocks(fix_version_info)
     exit()
