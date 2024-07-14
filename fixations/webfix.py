@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import urllib.parse
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from urllib.parse import unquote
 
 from flask import Flask, render_template
@@ -13,8 +13,6 @@ from fixations.fix_utils import extract_fix_lines_from_str_lines, create_fix_lin
 from fixations.short_str_id import get_short_str_id
 
 app = Flask(__name__)
-
-TEXT_AREA_MAX_COUNT = 8092  # this is mandated by gunicorn
 
 FORM_ID = 'id'
 FORM_FIX_LINES = 'fix_lines'
@@ -42,17 +40,19 @@ def receive_data():
     return f"{table}\n{url}\n"
 
 
-@app.route("/")
+@app.route("/", methods=['POST', 'GET'])
 def home():
-    show_date = True if request.args.get('show_date', False) else False
-    transpose = True if request.args.get('transpose', False) else False
+    params = get_request_params(request)
+
+    show_date = True if params.get('show_date', False) else False
+    transpose = True if params.get('transpose', False) else False
 
     headers = comment_row = fix_lines_list = fix_lines = []
     id_str = lookup_url_template_for_js = error = None
     char_count = 0
     try:
-        fix_lines_list, id_str, char_count, error = get_fix_lines_list(request)
-        if request.args.get(FORM_UPLOAD, False):
+        fix_lines_list, id_str, char_count, error = get_fix_lines_list(params)
+        if params.get(FORM_UPLOAD, False):
             uploaded_url = get_url_for_str_id(id_str)
             return uploaded_url
 
@@ -76,7 +76,6 @@ def home():
                'tags_to_highlight': top_tags if top_tags else DEFAULT_TOP_TAGS,
                'DEFAULT_TOP_TAGS_STR': DEFAULT_TOP_TAGS_STR,
 
-               'max_count': TEXT_AREA_MAX_COUNT,
                'fix_lines_list': [line.replace('"', '\\"') for line in fix_lines_list],  # Escape "
                'str_id': id_str,
                'lookup_url_template': lookup_url_template_for_js,
@@ -85,6 +84,24 @@ def home():
                'error': error
                }
     return render_template("index.html", **context)
+
+
+def get_request_params(req) -> Dict[str, str]:
+    params = {}
+
+    # Get parameters from GET request
+    if req.args:
+        params.update(req.args.to_dict())
+
+    # Get parameters from form data in POST request
+    if req.form:
+        params.update(req.form.to_dict())
+
+    # Get parameters from JSON data in POST request
+    if req.is_json:
+        params.update(req.json)
+
+    return params
 
 
 def set_top_rows(req, transpose, rows: List[List[str]]) -> Tuple[List[str], List[List[str]]]:
@@ -106,11 +123,11 @@ def set_top_rows(req, transpose, rows: List[List[str]]) -> Tuple[List[str], List
         return [], rows
 
 
-def get_fix_lines_list(req):
-    obfuscate_tags_str = req.args.get('obfuscate_tags', None)
+def get_fix_lines_list(params: Dict[str, str]):
+    obfuscate_tags_str = params.get('obfuscate_tags', None)
     obfuscate_tags = create_tag_set(obfuscate_tags_str)
 
-    str_id = req.args.get(FORM_ID)
+    str_id = params.get(FORM_ID)
     error = ''
     if str_id and not obfuscate_tags:
         fix_lines_str, _ = store.get(str_id)
@@ -121,7 +138,7 @@ def get_fix_lines_list(req):
         fix_lines_list = fix_lines_str.splitlines()
         char_count = len(fix_lines_str)
     else:
-        fix_lines_param = req.args.get(FORM_FIX_LINES, '')
+        fix_lines_param = params.get(FORM_FIX_LINES, '')
         fix_lines_list = fix_lines_param.splitlines()
         if len(fix_lines_list) > 0:
             if len(obfuscate_tags):
