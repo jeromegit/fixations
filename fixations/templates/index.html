@@ -339,7 +339,7 @@ window.onload = function(){
    {%- if comment_row and not transpose -%}
         <thead>
         {%- for comment_col in comment_row -%}
-           {%- autoescape false %}
+           {%- autoescape true %}
                <th class="comment">{{ comment_col|replace('\n', '<br>') }}</th>
            {%- endautoescape -%}
         {%- endfor %}
