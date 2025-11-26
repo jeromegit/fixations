@@ -221,7 +221,7 @@ def defaults_init():
         default_cfg = [f"[{CFG_FILE_SECTION_MAIN}]",
                        f"{CFG_FILE_KEY_DATA_DIR_PATH} = {DEFAULT_DATA_DIR_PATH}",
                        f"{CFG_FILE_KEY_FIX_VERSION} = {DEFAULT_FIX_VERSION}",
-                       f"{CFG_FILE_KEY_STORE_PATH} = {DEFAULT_STORE_PATH}"
+                       f"{CFG_FILE_KEY_STORE_PATH} = {DEFAULT_STORE_PATH}",
                        f"{CFG_FILE_KEY_LOOKUP_URL_TEMPLATE} = {DEFAULT_LOOKUP_URL_TEMPLATE}",
                        f"{CFG_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH} = {DEFAULT_ADDITIONAL_FIX_DEFINITIONS_CACHE_PATH}"
                        ]
